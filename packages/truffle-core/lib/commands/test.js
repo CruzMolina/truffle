@@ -41,7 +41,7 @@ const command = {
       }
     ]
   },
-  run(options, done) {
+  run: (options, done) => {
     const OS = require("os");
     const dir = require("node-dir");
     const temp = require("temp");
@@ -68,10 +68,8 @@ const command = {
 
     let files = [];
 
-    if (options.file) {
-      files = [options.file];
-    } else if (options._.length > 0) {
-      Array.prototype.push.apply(files, options._);
+    if (options._.length > 0) {
+      files = options._;
     }
 
     function getFiles(callback) {
