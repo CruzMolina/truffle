@@ -104,7 +104,7 @@ function Config(truffle_directory, working_directory, network) {
       transform: resolveDirectory
     },
     test_file_extension_regexp: function() {
-      return /.*\.(js|ts|es|es6|jsx|sol)$/;
+      return /.*\.(js|ts|es|es6|jsx|sol|vy)$/;
     },
     example_project_directory: {
       default: () => path.join(self.truffle_directory, "example"),
