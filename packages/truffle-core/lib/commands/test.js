@@ -65,103 +65,88 @@ const command = {
     }
 
     let ipcDisconnect;
-
     let files = [];
 
     if (options._.length > 0) {
       files = options._;
     }
 
-    function getFiles(callback) {
-      if (files.length !== 0) {
-        return callback(null, files);
-      }
-
-      dir.files(config.test_directory, callback);
+    if (files.length === 0) {
+      files = dir.files(config.test_directory, { sync: true });
     }
 
-    getFiles((err, files) => {
-      if (err) return done(err);
+    files = files.filter(
+      file => file.match(config.test_file_extension_regexp) !== null
+    );
 
-      files = files.filter(
-        file => file.match(config.test_file_extension_regexp) != null
+    const tempDir = temp.mkdirSync("test-");
+
+    const cleanup = () => {
+      temp.cleanupSync();
+      if (ipcDisconnect) {
+        ipcDisconnect();
+      }
+      done();
+    };
+
+    const run = () => {
+      // Set a new artifactor; don't rely on the one created by Environments.
+      // TODO: Make the test artifactor configurable.
+      config.artifactor = new Artifactor(tempDir);
+
+      Test.run(
+        config.with({
+          test_files: files,
+          contracts_build_directory: tempDir
+        }),
+        cleanup
       );
+    };
 
-      temp.mkdir("test-", (err, temporaryDirectory) => {
-        if (err) return done(err);
+    const environmentCallback = err => {
+      if (err) return done(err);
+      // Copy all the built files over to a temporary directory, because we
+      // don't want to save any tests artifacts. Only do this if the build directory
+      // exists.
+      fs.stat(config.contracts_build_directory, err => {
+        if (err) return run();
 
-        function cleanup() {
-          const args = arguments;
-          // Ensure directory cleanup.
-          temp.cleanup(() => {
-            // Ignore cleanup errors.
-            done.apply(null, args);
-            if (ipcDisconnect) {
-              ipcDisconnect();
-            }
-          });
-        }
-
-        function run() {
-          // Set a new artifactor; don't rely on the one created by Environments.
-          // TODO: Make the test artifactor configurable.
-          config.artifactor = new Artifactor(temporaryDirectory);
-
-          Test.run(
-            config.with({
-              test_files: files,
-              contracts_build_directory: temporaryDirectory
-            }),
-            cleanup
-          );
-        }
-
-        const environmentCallback = err => {
+        copy(config.contracts_build_directory, tempDir, err => {
           if (err) return done(err);
-          // Copy all the built files over to a temporary directory, because we
-          // don't want to save any tests artifacts. Only do this if the build directory
-          // exists.
-          fs.stat(config.contracts_build_directory, err => {
-            if (err) return run();
 
-            copy(config.contracts_build_directory, temporaryDirectory, err => {
-              if (err) return done(err);
+          config.logger.log(`Using network '${config.network}'.${OS.EOL}`);
 
-              config.logger.log(`Using network '${config.network}'.${OS.EOL}`);
-
-              run();
-            });
-          });
-        };
-
-        if (config.networks[config.network]) {
-          Environment.detect(config, environmentCallback);
-        } else {
-          const ipcOptions = {
-            network: "test"
-          };
-
-          const ganacheOptions = {
-            host: "127.0.0.1",
-            port: 7545,
-            network_id: 4447,
-            mnemonic:
-              "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat",
-            gasLimit: config.gas,
-            noVMErrorsOnRPCResponse: true
-          };
-
-          Develop.connectOrStart(
-            ipcOptions,
-            ganacheOptions,
-            (started, disconnect) => {
-              ipcDisconnect = disconnect;
-              Environment.develop(config, ganacheOptions, environmentCallback);
-            }
-          );
-        }
+          run();
+        });
       });
-    });
+    };
+
+    if (config.networks[config.network]) {
+      Environment.detect(config, environmentCallback);
+    } else {
+      const ipcOptions = {
+        network: "test"
+      };
+
+      const ganacheOptions = {
+        host: "127.0.0.1",
+        port: 7545,
+        network_id: 4447,
+        mnemonic:
+          "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat",
+        gasLimit: config.gas,
+        noVMErrorsOnRPCResponse: true
+      };
+
+      Develop.connectOrStart(
+        ipcOptions,
+        ganacheOptions,
+        (started, disconnect) => {
+          ipcDisconnect = disconnect;
+          Environment.develop(config, ganacheOptions, environmentCallback);
+        }
+      );
+    }
   }
 };
 
