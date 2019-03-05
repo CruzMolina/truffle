@@ -45,6 +45,7 @@ const command = {
     const OS = require("os");
     const dir = require("node-dir");
     const temp = require("temp");
+    const path = require("path");
     const Config = require("truffle-config");
     const Artifactor = require("truffle-artifactor");
     const Develop = require("../develop");
@@ -78,6 +79,13 @@ const command = {
     files = files.filter(
       file => file.match(config.test_file_extension_regexp) !== null
     );
+
+    files.forEach(file => {
+      if (!fs.existsSync(file))
+        throw new Error(
+          `Cannot find module '${path.join(config.working_directory, file)}'`
+        );
+    });
 
     const tempDir = temp.mkdirSync("test-");
 
