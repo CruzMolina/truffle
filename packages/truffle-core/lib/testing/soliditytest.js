@@ -112,6 +112,7 @@ const SolidityTest = {
 
   compileNewAbstractInterface(runner, callback) {
     find_contracts(runner.config.contracts_directory, err => {
+      console.log("find_contracts being used in soliditytest.js");
       if (err) return callback(err);
 
       const config = runner.config;

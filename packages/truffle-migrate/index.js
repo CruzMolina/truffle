@@ -24,6 +24,7 @@ const Migrate = {
 
   assemble: function(options, callback) {
     var config = Config.detect(options);
+    console.log("options.migrations_directory:", options.migrations_directory);
     dir.files(options.migrations_directory, function(err, files) {
       if (err) return callback(err);
 
@@ -126,6 +127,9 @@ const Migrate = {
       migrations[total - 1].isLast = true;
     }
 
+    console.log("clone.resolver:", clone.resolver);
+    console.log("clone.resolver.resolve:", clone.resolver.resolve);
+    console.log("clone.resolver.require:", clone.resolver.require);
     async.eachSeries(
       migrations,
       function(migration, finished) {
@@ -151,6 +155,8 @@ const Migrate = {
   wrapResolver: function(resolver, provider) {
     return {
       require: function(import_path, search_path) {
+        console.log("import_path:", import_path);
+        console.log("search_path:", search_path);
         const abstraction = resolver.require(import_path, search_path);
         abstraction.setProvider(provider);
         return abstraction;

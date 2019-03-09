@@ -1,6 +1,7 @@
 const Mocha = require("mocha");
 const chai = require("chai");
 const path = require("path");
+const util = require("util");
 const Web3 = require("web3");
 const Config = require("truffle-config");
 const Contracts = require("truffle-workflow-compile");
@@ -17,7 +18,7 @@ const originalrequire = require("original-require");
 chai.use(require("./assertions"));
 
 const Test = {
-  run: (options, callback) => {
+  async run(options, callback) {
     const self = this;
 
     expect.options(options, [
@@ -45,7 +46,7 @@ const Test = {
     // e.g., https://github.com/ethereum/web3.js/blob/master/lib/web3/allevents.js#L61
     // Output looks like this during tests: https://gist.github.com/tcoulter/1988349d1ec65ce6b958
     const warn = config.logger.warn;
-    config.logger.warn = function(message) {
+    config.logger.warn = message => {
       if (message === "cannot find event for log") {
         return;
       } else {
@@ -58,12 +59,24 @@ const Test = {
     const mocha = this.createMocha(config);
 
     const js_tests = config.test_files.filter(
-      file => path.extname(file) !== ".sol"
+      file => {
+        return file.match(/.*\.(js|ts|es|es6|jsx)$/);
+      } //path.extname(file) === /.*\.(js|ts|es|es6|jsx|sol)$/;
     );
+
+    await console.log("js_tests:", js_tests);
 
     const sol_tests = config.test_files.filter(
       file => path.extname(file) === ".sol"
     );
+
+    await console.log("sol_tests:", sol_tests);
+
+    const vy_tests = config.test_files.filter(
+      file => path.extname(file) === ".vy"
+    );
+
+    await console.log("vy_tests:", vy_tests);
 
     // Add Javascript tests because there's nothing we need to do with them.
     // Solidity tests will be handled later.
@@ -76,13 +89,63 @@ const Test = {
       mocha.addFile(file);
     });
 
-    let dependency_paths = [];
-    let testContracts = [];
-    let accounts = [];
-    let runner;
-    let test_resolver;
+    const accounts = await web3.eth.getAccounts();
 
-    web3.eth
+    await console.log("accounts:", accounts);
+
+    if (!config.resolver) {
+      config.resolver = new Resolver(config);
+    }
+
+    const test_source = new TestSource(config);
+    const test_resolver = new TestResolver(
+      config.resolver,
+      test_source,
+      config.contracts_build_directory
+    );
+    test_resolver.cache_on = false;
+
+    console.log(
+      "config.contracts_build_directory:",
+      config.contracts_build_directory
+    );
+
+    const dependency_paths = await self.compileContractsWithTestFilesIfNeeded(
+      sol_tests,
+      config,
+      test_resolver
+    );
+
+    await console.log("dependency_paths:", dependency_paths);
+
+    const testSolContracts = sol_tests.map(test_file_path => {
+      const built_name = `./${path.basename(test_file_path)}`;
+      return test_resolver.require(built_name);
+    });
+
+    await console.log("testSolContracts:", testSolContracts);
+
+    const runner = new TestRunner(config);
+
+    await self.performInitialDeploy(config, test_resolver);
+    await console.log("performed initial deploy");
+
+    await self.defineSolidityTests(
+      mocha,
+      testContracts,
+      dependency_paths,
+      runner
+    );
+    await console.log("defined solidity tests");
+
+    await self.setJSTestGlobals(web3, accounts, test_resolver, runner);
+    await console.log("set js test globals");
+
+    done();
+
+    //return done();
+
+    /*web3.eth
       .getAccounts()
       .then(accs => {
         accounts = accs;
@@ -101,6 +164,7 @@ const Test = {
 
         return self.compileContractsWithTestFilesIfNeeded(
           sol_tests,
+          vy_tests,
           config,
           test_resolver
         );
@@ -123,7 +187,7 @@ const Test = {
       .then(() => self.setJSTestGlobals(web3, accounts, test_resolver, runner))
       .then(() => {
         // Finally, run mocha.
-        process.on("unhandledRejection", reason => {
+        process.on("unhandledRejection", (reason) => {
           throw reason;
         });
 
@@ -133,7 +197,7 @@ const Test = {
           callback(failures);
         });
       })
-      .catch(callback);
+      .catch(callback);*/
   },
 
   createMocha: config => {
@@ -157,6 +221,7 @@ const Test = {
 
   compileContractsWithTestFilesIfNeeded: (
     solidity_test_files,
+    //  vyper_test_files,
     config,
     test_resolver
   ) =>
@@ -170,17 +235,21 @@ const Test = {
 
           updated = updated || [];
 
+          console.log("updated:", updated);
+          console.log("soli_test_files:", solidity_test_files);
+
           // Compile project contracts and test contracts
           Contracts.compile(
             config.with({
               all: config.compileAll === true,
-              files: updated.concat(solidity_test_files),
+              files: updated.concat(solidity_test_files), //, vyper_test_files),
               resolver: test_resolver,
               quiet: false,
               quietWrite: true
             }),
-            (err, { outputs }) => {
-              if (err) return reject(err);
+            (err, outputs) => {
+              if (err) return console.log(err);
+              console.log("outputs:", outputs);
               const paths = outputs.solc;
               accept(paths);
             }
@@ -189,7 +258,18 @@ const Test = {
       );
     }),
 
-  performInitialDeploy: (config, resolver) =>
+  performInitialDeploy: async (config, resolver) => {
+    //    const MigrateRun = util.promisify(Migrate.run)
+    //const response = MigrateRun(config.with({reset: true, resolver, quiet:false}))//.catch(err => {throw new Error(err)})
+    //console.log("response:", response)
+    try {
+      await Migrate.run(config.with({ reset: true, resolver, quiet: true }));
+    } catch (e) {
+      throw new Error(e);
+    }
+  },
+
+  /*performInitialDeploy: (config, resolver) =>
     new Promise((accept, reject) => {
       Migrate.run(
         config.with({
@@ -202,16 +282,18 @@ const Test = {
           accept();
         }
       );
-    }),
+    }),*/
 
-  defineSolidityTests: (mocha, contracts, dependency_paths, runner) =>
-    new Promise(accept => {
-      contracts.forEach(contract => {
+  defineSolidityTests: async (mocha, contracts, dependency_paths, runner) => {
+    try {
+      await console.log("hi!");
+      await contracts.forEach(contract => {
         SolidityTest.define(contract, dependency_paths, runner, mocha);
       });
-
-      accept();
-    }),
+    } catch (e) {
+      throw new Error(e);
+    }
+  },
 
   setJSTestGlobals: (web3, accounts, test_resolver, runner) =>
     new Promise(accept => {

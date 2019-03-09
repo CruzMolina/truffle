@@ -6,6 +6,7 @@ const glob = require("glob");
 const DEFAULT_PATTERN = "**/*.sol";
 
 module.exports = function(pattern, callback) {
+  console.log("pattern:", pattern);
   // pattern is either a directory (contracts directory), or an absolute path
   // with a glob expression
   if (!glob.hasMagic(pattern)) {
@@ -13,7 +14,7 @@ module.exports = function(pattern, callback) {
   }
 
   const globOptions = {
-    follow: true  // follow symlinks
+    follow: true // follow symlinks
   };
 
   glob(pattern, globOptions, callback);

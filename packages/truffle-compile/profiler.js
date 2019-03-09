@@ -21,6 +21,7 @@ module.exports = {
       if (options.files) {
         done(null, options.files);
       } else {
+        console.log("find_contracts being used in profiler.updated");
         find_contracts(contracts_directory, done);
       }
     }
@@ -36,6 +37,8 @@ module.exports = {
         function(c) {
           getFiles(function(err, files) {
             if (err) return c(err);
+
+            console.log("files:", files);
 
             // Use an object for O(1) access.
             files.forEach(function(sourceFile) {
@@ -190,6 +193,7 @@ module.exports = {
 
     // Fetch the whole contract set
     find_contracts(options.contracts_directory, (err, allPaths) => {
+      console.log("find_contracts being used in profiler.required_sources");
       if (err) return callback(err);
 
       // Solidity test files might have been injected. Include them in the known set.

@@ -3,13 +3,13 @@ const path = require("path");
 function ResolverIntercept(resolver) {
   this.resolver = resolver;
   this.cache = {};
-};
+}
 
 ResolverIntercept.prototype.require = function(import_path) {
   // Modify import_path so the cache key is consistently based only on the contract name.
   // This works because Truffle already prevents more than one contract with the same name.
   // Ref: https://github.com/trufflesuite/truffle/issues/1087
-  import_path = path.basename(import_path).replace(/\.sol$/i, '');
+  import_path = path.basename(import_path).replace(/\.sol$/i, "");
 
   // TODO: Using the import path for relative files may result in multiple
   // paths for the same file. This could return different objects since it won't be a cache hit.
@@ -18,6 +18,7 @@ ResolverIntercept.prototype.require = function(import_path) {
   }
 
   // Note, will error if nothing is found.
+  console.log("import_path:", import_path);
   var resolved = this.resolver.require(import_path);
 
   this.cache[import_path] = resolved;

@@ -347,6 +347,7 @@ function orderABI(contract) {
 // strict: Boolean. Return compiler warnings as errors. Defaults to false.
 compile.all = function(options, callback) {
   find_contracts(options.contracts_directory, function(err, files) {
+    console.log("find_contracts being used in compile.all");
     if (err) return callback(err);
 
     options.paths = files;
