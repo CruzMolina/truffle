@@ -19,6 +19,13 @@ TestResolver.prototype.require = function(import_path) {
   // by converting all '/' to the default (path.sep);
   import_path = import_path.replace(/\//g, path.sep);
 
+  console.log(
+    "import_path:",
+    import_path,
+    "this.search_path:",
+    this.search_path
+  );
+
   // Remember: This throws if not found.
   var result = this.resolver.require(import_path, this.search_path);
 

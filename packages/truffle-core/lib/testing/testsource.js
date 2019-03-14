@@ -29,6 +29,7 @@ TestSource.prototype.resolve = function(import_path, callback) {
         if (err) return callback(err);
 
         var mapping = {};
+        let vy = false;
 
         var blacklist = ["Assert", "DeployedAddresses"];
 
@@ -36,6 +37,8 @@ TestSource.prototype.resolve = function(import_path, callback) {
         // to prevent any compile errors in tests.
         source_files.forEach(function(file) {
           var name = path.basename(file, ".sol");
+          var otherName = path.basename(file, ".vy");
+          if (blacklist.indexOf(otherName >= 0)) return;
           if (blacklist.indexOf(name) >= 0) return;
           mapping[name] = false;
         });
@@ -66,6 +69,8 @@ TestSource.prototype.resolve = function(import_path, callback) {
                 return JSON.parse(data);
               })
               .map(function(json) {
+                console.log("json!", json);
+                if (path.extname(json.sourcePath) === ".vy") vy = true;
                 return contract(json);
               })
               .map(function(c) {
@@ -83,6 +88,10 @@ TestSource.prototype.resolve = function(import_path, callback) {
 
               mapping[name] = address;
             });
+
+            console.log("mapping:", mapping);
+
+            //            if (vy) return Deployed.makeVyperDeployedAddressesLibrary(mapping)
 
             return Deployed.makeSolidityDeployedAddressesLibrary(mapping);
           })

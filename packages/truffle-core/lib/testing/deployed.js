@@ -35,6 +35,36 @@ var Deployed = {
     return source;
   },
 
+  makeVyperDeployedAddressesLibrary: function(mapping) {
+    var self = this;
+
+    var source = "";
+
+    Object.keys(mapping).forEach(function(name) {
+      var address = mapping[name];
+
+      var body = "pass";
+
+      if (address) {
+        address = self.toChecksumAddress(address);
+
+        body = "return " + address;
+      }
+
+      source +=
+        "@public\n@constant\ndef " +
+        name +
+        "() -> address:\n    " +
+        body +
+        "\n";
+      source += "\n";
+    });
+
+    console.log("vyper source:", source);
+
+    return source;
+  },
+
   // Pulled from ethereumjs-util, but I don't want all its dependencies at the moment.
   toChecksumAddress: function(address) {
     var web3 = new Web3();
