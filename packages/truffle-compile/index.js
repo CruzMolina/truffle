@@ -24,10 +24,13 @@ const compile = function(sources, options, callback) {
     options = {};
   }
 
+  //console.log("sources:", sources)
+
   if (options.logger === undefined) options.logger = console;
 
   const hasTargets =
     options.compilationTargets && options.compilationTargets.length;
+  //console.log("hasTargets", hasTargets)
 
   expect.options(options, ["contracts_directory", "compilers"]);
 
@@ -246,14 +249,28 @@ const compile = function(sources, options, callback) {
               });
             }
           );
+          const cleanSourcePath = contract_definition.sourcePath.replace(
+            /[.].+/,
+            ""
+          );
+          const relativePath = path.relative(
+            options.contracts_directory,
+            cleanSourcePath
+          );
+          //contract_definition.relativePath = path.relative(options.contracts_directory, cleanSourcePath)
+          //console.log(contract_definition.relativePath)
 
-          returnVal[contract_name] = contract_definition;
+          returnVal[relativePath] = contract_definition;
         });
       });
 
       const compilerInfo = { name: "solc", version: solc.version() };
 
-      callback(null, returnVal, files, compilerInfo);
+      //      if (options.tests) returnVal.tests = true;
+      //      console.log(options.tests, returnVal.tests, "true?")
+      //console.log("returnVal!", returnVal)
+
+      callback(null, returnVal, files, compilerInfo, options.tests);
     })
     .catch(callback);
 };
