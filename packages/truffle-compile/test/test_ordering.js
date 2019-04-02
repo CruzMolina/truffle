@@ -142,13 +142,14 @@ describe("Compile - solidity ^0.4.0", function() {
     });
 
     // Ported from `truffle-solidity-utils`
-    it("orders the ABI of a contract without functions", function(done) {
+    it.only("orders the ABI of a contract without functions", function(done) {
       var sources = {};
       // ComplexOrdered.sol includes contract `Empty`
       sources["ComplexOrdered.sol"] = complexOrderedSource;
       sources["InheritB.sol"] = inheritedSource;
 
       Compile(sources, compileOptions, function(err, result) {
+        console.log("result", result);
         assert.equal(result["Empty"].abi.length, 0);
         done();
       });

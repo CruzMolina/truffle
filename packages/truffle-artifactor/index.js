@@ -29,30 +29,45 @@ Artifactor.prototype.save = function(object, testCompilation) {
     //const relative = path.relative(config.contracts_directory, output_path)
     //console.log("here's the relative path!", relative)
     //console.log("here is parsed output_path:", output_path)
-    //    let output_path;
+    let output_path;
     /*if (testCompilation) {
-      console.log("replace this", object.relativePath)
-      const testPath = object.relativePath.substring(1)
-      console.log("testPath:", testPath)
-      console.log("Destination", self.destination)
+
+      const cleanSourcePath = object.sourcePath.replace(/[.].+/, "");
+      const relativePath = path.relative(
+      self.contracts_directory,
+      cleanSourcePath
+      );
+      const testPath = relativePath.substring(1)
       output_path = path.resolve(self.destination, testPath)
       console.log("resolved to this:", output_path)
     } else {*/
     //    let output_path = object.relativePath
+    /* CURRENT SOLUTION
     const cleanSourcePath = object.sourcePath.replace(/[.].+/, "");
     const relativePath = path.relative(
       self.contracts_directory,
       cleanSourcePath
-    );
+    ); 
+
+    if (testCompilation) {
+      let testPath = object.relativePath.substring(1)
+      //console.log("the testPath:", testPath)
+      if (testPath.includes("/truffle/packages/truffle/build/")) testPath = `truffle/build/${path.basename(testPath)}`
+        output_path = path.resolve(self.destination, testPath)
+    } else {
     //console.log(output_path)
     //console.log(object) // TODO ADD TO SCHEMA!!!!!
 
     // Create new path off of destination.
-    let output_path = path.join(self.destination, relativePath);
-    output_path = path.resolve(output_path);
-    //}
+    output_path = path.resolve(self.destination, relativePath);
+    }*/
 
-    console.log("new path of output_path", output_path);
+    //console.log("new path of output_path", output_path); */
+    //
+    console.log(object.relativePath);
+    output_path = path.resolve(self.destination, object.relativePath);
+
+    console.log("output_path", output_path);
 
     // Add json extension.
     output_path = output_path + ".json";
@@ -129,7 +144,7 @@ Artifactor.prototype.saveAll = function(objects, testCompilation) {
       //      var object = objects[contractFilePath];
       //      object.contractName = objects[contract].contractName
       //      object.contractFilePath = objects[contractFilePath].contractName;
-      console.log("this is the object", object);
+      //console.log("this is the object", object);
       console.log("this is the boolean", testCompilation);
       promises.push(self.save(object, testCompilation));
     });

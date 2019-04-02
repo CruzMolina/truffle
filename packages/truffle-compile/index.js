@@ -175,13 +175,35 @@ const compile = function(sources, options, callback) {
       // This block has comments in it as it's being prepared for solc > 0.4.10
       Object.keys(contracts).forEach(source_path => {
         var files_contracts = contracts[source_path];
+        //console.log("files_contracts", source_path)
 
         Object.keys(files_contracts).forEach(contract_name => {
+          const cleanSourcePath = originalPathMappings[source_path].replace(
+            /[.].+/,
+            ""
+          );
+          //          let contract_definition = {};
+          let relativePath;
+          if (options.tests)
+            relativePath = path.relative(
+              options.working_directory,
+              cleanSourcePath
+            );
+          else
+            relativePath = path.relative(
+              options.contracts_directory,
+              cleanSourcePath
+            );
+          console.log("relativePath", relativePath);
           var contract = files_contracts[contract_name];
+          //          console.log(files_contracts)
+          //console.log(contract_name)
 
           // All source will have a key, but only the compiled source will have
           // the evm output.
           if (!Object.keys(contract.evm).length) return;
+          //console.log(contract, contract.abi)
+          //console.log(contract_definition["relativePath"])
 
           var contract_definition = {
             contract_name: contract_name,
@@ -249,22 +271,39 @@ const compile = function(sources, options, callback) {
               });
             }
           );
-          const cleanSourcePath = contract_definition.sourcePath.replace(
+          /*const cleanSourcePath = contract_definition.sourcePath.replace(
             /[.].+/,
             ""
           );
-          const relativePath = path.relative(
+          if (options.tests) contract_definition.relativePath = path.relative(options.working_directory, cleanSourcePath)
+          else contract_definition.relativePath = path.relative(options.contracts_directory, cleanSourcePath)
+            /*const relativePath = path.relative(
             options.contracts_directory,
             cleanSourcePath
-          );
-          //contract_definition.relativePath = path.relative(options.contracts_directory, cleanSourcePath)
-          //console.log(contract_definition.relativePath)
+          );*/
+          //contract_definition.relativePath = path.relative(options.contracts_directory, cleanSourcePath)*/
+          //console.log("contract_definition.relativePath:", contract_definition["relativePath"])
+          contract_definition.relativePath = relativePath;
 
           returnVal[relativePath] = contract_definition;
         });
+        //        console.log("file_contracts", files_contracts)
+        /*Object.keys(returnVal).forEach(relativePath => {console.log("this abi?", returnVal[relativePath].abi)
+          returnVal[relativePath].abi = orderABI(returnVal[relativePath])
+        
+        console.log("after", returnVal[relativePath].abi)
+        })*/
+      });
+      Object.keys(returnVal).forEach(relativePath => {
+        //console.log("this abi?", returnVal[relativePath].abi)
+        returnVal[relativePath].abi = orderABI(returnVal[relativePath]);
+        console.log(returnVal[relativePath].abi);
+        // console.log("after", returnVal[relativePath].abi)
       });
 
       const compilerInfo = { name: "solc", version: solc.version() };
+
+      // TODO if options.tests, should make relativePath from testDIR
 
       //      if (options.tests) returnVal.tests = true;
       //      console.log(options.tests, returnVal.tests, "true?")
@@ -304,7 +343,7 @@ function orderABI(contract) {
     // one that matches our contract
     if (
       definition.name !== "ContractDefinition" ||
-      definition.attributes.name !== contract.contract_name
+      definition.attributes.name !== contract.relativePath
     ) {
       continue;
     }

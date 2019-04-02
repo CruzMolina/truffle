@@ -53,42 +53,46 @@ TestRunner.prototype.initialize = function(callback) {
   var afterStateReset = function(err) {
     if (err) return callback(err);
 
-    fs.readdir(self.config.contracts_build_directory, function(err, files) {
-      if (err) return callback(err);
+    const glob = require("glob");
+    const pattern = path.join(
+      self.config.contracts_build_directory,
+      "**/*.json"
+    );
 
-      files = _.filter(files, function(file) {
-        return path.extname(file) === ".json";
-      });
+    let build_files = glob.sync(pattern);
 
-      async.map(
-        files,
-        function(file, finished) {
-          fs.readFile(
-            path.join(self.config.contracts_build_directory, file),
-            "utf8",
-            finished
-          );
-        },
-        function(err, data) {
-          if (err) return callback(err);
+    //console.log("files this runner is finding", build_files)
 
-          var contracts = data.map(JSON.parse).map(contract);
-          var abis = _.flatMap(contracts, "abi");
-
-          abis.map(function(abi) {
-            if (abi.type === "event") {
-              var signature =
-                abi.name + "(" + _.map(abi.inputs, "type").join(",") + ")";
-              self.known_events[self.web3.utils.sha3(signature)] = {
-                signature: signature,
-                abi_entry: abi
-              };
-            }
-          });
-          callback();
-        }
-      );
+    build_files = _.filter(build_files, function(file) {
+      return path.extname(file) === ".json";
     });
+
+    //    console.log("filtered files", build_files)
+
+    async.map(
+      build_files,
+      function(file, finished) {
+        fs.readFile(file, "utf8", finished);
+      },
+      function(err, data) {
+        if (err) return callback(err);
+
+        var contracts = data.map(JSON.parse).map(contract);
+        var abis = _.flatMap(contracts, "abi");
+
+        abis.map(function(abi) {
+          if (abi.type === "event") {
+            var signature =
+              abi.name + "(" + _.map(abi.inputs, "type").join(",") + ")";
+            self.known_events[self.web3.utils.sha3(signature)] = {
+              signature: signature,
+              abi_entry: abi
+            };
+          }
+        });
+        callback();
+      }
+    );
   };
 
   if (self.first_snapshot) {
@@ -105,6 +109,7 @@ TestRunner.prototype.initialize = function(callback) {
       self.first_snapshot = false;
 
       afterStateReset();
+      //console.log("did afterStateReset")
     });
     //});
   } else {

@@ -82,6 +82,7 @@ var properties = {
   },
   source: {},
   sourcePath: {},
+  relativePath: {},
   ast: {},
   legacyAST: {
     transform: function(value, obj) {

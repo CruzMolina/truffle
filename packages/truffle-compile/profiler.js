@@ -47,7 +47,49 @@ module.exports = {
         },
         // Get all the artifact files, and read them, parsing them as JSON
         c => {
-          fs.readdir(build_directory, (err, build_files) => {
+          const glob = require("glob");
+          const pattern = path.join(build_directory, "**/*.json");
+
+          let build_files = glob.sync(pattern);
+          async.map(
+            build_files,
+            (buildFile, finished) => {
+              fs.readFile(
+                buildFile,
+                //path.join(build_directory, buildFile),
+                "utf8",
+                (err, body) => {
+                  //                    console.log("path.join",path.join(build_directory, buildFile) )
+                  if (err) return finished(err);
+                  finished(null, body);
+                }
+              );
+            },
+            (err, jsonData) => {
+              if (err) return c(err);
+
+              try {
+                for (let i = 0; i < jsonData.length; i++) {
+                  const data = JSON.parse(jsonData[i]);
+
+                  // In case there are artifacts from other source locations.
+                  if (sourceFilesArtifacts[data.sourcePath] == null) {
+                    sourceFilesArtifacts[data.sourcePath] = [];
+                  }
+
+                  sourceFilesArtifacts[data.sourcePath].push(data);
+                }
+              } catch (e) {
+                //console.log("uh oh")
+                return c(e);
+              }
+
+              c();
+            }
+          );
+        },
+
+        /*fs.readdir(build_directory, (err, build_files) => {
             if (err) {
               // The build directory may not always exist.
               if (err.message.includes("ENOENT: no such file or directory")) {
@@ -95,8 +137,7 @@ module.exports = {
                 c();
               }
             );
-          });
-        },
+          });*/
         c => {
           // Get the minimum updated time for all of a source file's artifacts
           // (note: one source file might have multiple artifacts).
@@ -130,6 +171,7 @@ module.exports = {
         // the artifact updated times.
         c => {
           const sourceFiles = Object.keys(sourceFilesArtifacts);
+          //console.log("sourceFiles:", sourceFiles)
 
           async.map(
             sourceFiles,
@@ -207,6 +249,8 @@ module.exports = {
       const allSources = {};
       const compilationTargets = [];
 
+      //console.log("allPaths", allPaths)
+
       // Load compiler
       const supplier = new CompilerSupplier(options.compilers.solc);
       supplier
@@ -218,6 +262,8 @@ module.exports = {
             allPaths,
             solc
           );
+
+          //console.log("sources resolvedall!")
           // Generate hash of all sources including external packages - passed to solc inputs.
           const resolvedPaths = Object.keys(resolved);
           resolvedPaths.forEach(file => {
@@ -259,11 +305,13 @@ module.exports = {
 
                   let imports;
                   try {
+                    //console.log("are we here?")
                     imports = self.getImports(
                       currentFile,
                       resolved[currentFile],
                       solc
                     );
+                    //console.log("this succeeded")
                   } catch (err) {
                     err.message = `Error parsing ${currentFile}: ${e.message}`;
                     return fileFinished(err);
@@ -294,6 +342,13 @@ module.exports = {
   // Resolves sources in several async passes. For each resolved set it detects unknown
   // imports from external packages and adds them to the set of files to resolve.
   async resolveAllSources(resolver, initialPaths, solc) {
+    //console.log("resolver:", resolver)
+    let contracts_directory;
+    if (resolver.resolver)
+      contracts_directory = resolver.source.config.contracts_directory;
+    else contracts_directory = resolver.options.contracts_directory;
+
+    //console.log("initialPaths:", initialPaths)
     const self = this;
     const mapping = {};
     const allPaths = initialPaths.slice();
@@ -318,9 +373,28 @@ module.exports = {
         } else {
           file = candidate;
         }
+
+        //console.log("file:", file)
+        //console.log("parent:", parent)
         const promise = new Promise((accept, reject) => {
           resolver.resolve(file, parent, (err, body, absolutePath, source) => {
-            err ? reject(err) : accept({ file: absolutePath, body, source });
+            const cleanFilePath = file.replace(/[.].+/, "");
+
+            //console.log("Cleaned file:", cleanFilePath)
+            const relativeFilePath = path.relative(
+              contracts_directory,
+              cleanFilePath
+            );
+            //console.log("relativeFilePath:", relativeFilePath)
+            //console.log("absolutePath:", absolutePath)
+            err
+              ? reject(err)
+              : accept({
+                  file: absolutePath,
+                  relativePath: relativeFilePath,
+                  body,
+                  source
+                });
           });
         });
         promises.push(promise);
@@ -342,8 +416,13 @@ module.exports = {
             // Inspect the imports
             let imports;
             try {
+              //console.log("are we doing imports?")
+              //              console.log("result:", result)
               imports = self.getImports(result.file, result, solc);
+
+              //console.log("imports successful")
             } catch (err) {
+              //console.log("import failed")
               err.message = `Error parsing ${result.file}: ${err.message}`;
               return finished(err);
             }
@@ -363,6 +442,7 @@ module.exports = {
 
     return new Promise((resolve, reject) => {
       async.whilst(() => allPaths.length, generateMapping, error => {
+        //        console.log("mapping:", mapping)
         if (error) reject(new Error(error));
         resolve(mapping);
       });
@@ -375,7 +455,10 @@ module.exports = {
     // No imports in vyper!
     if (path.extname(file) === ".vy") return [];
 
+    //console.log("gonna parseImports")
+
     const imports = Parser.parseImports(body, solc);
+    //console.log("parsed imports:", imports)
 
     // Convert explicitly relative dependencies of modules back into module paths.
     return imports.map(
@@ -408,6 +491,7 @@ module.exports = {
   },
 
   isExplicitlyRelative(import_path) {
+    //console.log(import_path.indexOf(".") === 0)
     return import_path.indexOf(".") === 0;
   }
 };

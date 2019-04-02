@@ -107,9 +107,12 @@ const Contracts = {
             ? compile.all
             : compile.necessary;
 
-        let [contracts, output, compilerUsed] = await multiPromisify(
-          compileFunc
-        )(config);
+        let [
+          contracts,
+          output,
+          compilerUsed,
+          testCompilation
+        ] = await multiPromisify(compileFunc)(config);
 
         if (compilerUsed) {
           config.compilersInfo[compilerUsed.name] = {
@@ -118,8 +121,11 @@ const Contracts = {
         }
 
         if (contracts && Object.keys(contracts).length > 0) {
-          await this.writeContracts(contracts, config);
+          await this.writeContracts(contracts, config, testCompilation);
         }
+
+        //console.log("contracts:", contracts)
+        //console.log("output:", output)
 
         return { compiler, contracts, output };
       })
@@ -165,10 +171,9 @@ const Contracts = {
     }
   },
 
-  writeContracts: async (contracts, options) => {
+  writeContracts: async (contracts, options, testCompilation) => {
     await promisify(mkdirp)(options.contracts_build_directory);
-    const extra_opts = { network_id: options.network_id };
-    await options.artifactor.saveAll(contracts, extra_opts);
+    await options.artifactor.saveAll(contracts, testCompilation);
   }
 };
 

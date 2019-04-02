@@ -31,6 +31,8 @@ Resolver.prototype.require = function(import_path, search_path) {
       return abstraction;
     }
   }
+
+  //console.log("search_path again", search_path)
   throw new Error(
     "Could not find artifacts for " + import_path + " from any sources"
   );
@@ -57,6 +59,9 @@ Resolver.prototype.resolve = function(import_path, imported_from, callback) {
       current_index += 1;
       current_source = self.sources[current_index];
 
+      //console.log("import_path", import_path)
+      //console.log("imported_from", imported_from)
+
       current_source.resolve(import_path, imported_from, function(
         err,
         body,
@@ -70,6 +75,7 @@ Resolver.prototype.resolve = function(import_path, imported_from, callback) {
       });
     },
     function(err) {
+      //console.log("how bout err here?")
       if (err) return callback(err);
 
       if (!resolved_body) {

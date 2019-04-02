@@ -14,8 +14,12 @@ const SolidityTest = {
   define(abstraction, dependency_paths, runner, mocha) {
     const self = this;
 
+    //console.log("abstraction.contract_name", abstraction.contract_name)
+
     const suite = new Suite(abstraction.contract_name, {});
     suite.timeout(runner.BEFORE_TIMEOUT);
+
+    //console.log("about to do prepare suite")
 
     // Set up our runner's needs first.
     suite.beforeAll("prepare suite", function(done) {
@@ -34,9 +38,13 @@ const SolidityTest = {
       );
     });
 
+    //console.log("about to do before test")
+
     suite.beforeEach("before test", function(done) {
       runner.startTest(this, done);
     });
+
+    //console.log("after beforeEach before test")
 
     // Function that decodes raw logs from unlinked third party assertion
     // libraries and returns usable TestEvent logs
@@ -103,16 +111,25 @@ const SolidityTest = {
       }
     });
 
+    //console.log("before afterEach suite")
+
     suite.afterEach("after test", function(done) {
       runner.endTest(this, done);
     });
 
+    //console.log("after afterEach suite")
+
+    //console.log("before mocha addSuite")
+
     mocha.suite.addSuite(suite);
+    //console.log("suite added!")
   },
 
   compileNewAbstractInterface(runner, callback) {
-    find_contracts(runner.config.contracts_directory, err => {
+    find_contracts(runner.config.contracts_directory, (err, files) => {
       if (err) return callback(err);
+
+      //console.log("find_contracts files", files)
 
       const config = runner.config;
       if (!config.compilers.solc.version) SafeSend = "NewSafeSend.sol";
@@ -151,8 +168,10 @@ const SolidityTest = {
             contracts[name].default_network = runner.config.default_network;
           });
 
+          //console.log("contracts about to run through:", contracts)
+
           runner.config.artifactor
-            .saveAll(contracts, runner.config.contracts_build_directory)
+            .saveAll(contracts, true) // testCompilation
             .then(() => {
               callback();
             })
@@ -191,7 +210,7 @@ const SolidityTest = {
       runner.config.resolver.require(`truffle/${name}.sol`)
     );
 
-    SafeSend = runner.config.resolver.require(SafeSend);
+    SafeSend = runner.config.resolver.require(`truffle/${SafeSend}`);
 
     for (const testLib of testAbstractions) {
       deployer.deploy(testLib);

@@ -61,7 +61,8 @@ contract B {
       sourceMap: rawA.evm.bytecode.sourceMap,
       deployedSourceMap: rawA.evm.deployedBytecode.sourceMap,
       devdoc: rawA.devdoc,
-      userdoc: rawA.userdoc
+      userdoc: rawA.userdoc,
+      relativePath: undefined
     };
 
     Object.keys(expected).forEach(function(key) {

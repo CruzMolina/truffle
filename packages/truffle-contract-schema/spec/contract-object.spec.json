@@ -55,7 +55,10 @@
       "format": "date-time"
     },
     "devdoc": { "$ref": "#/definitions/NatSpec" },
-    "userdoc": { "$ref": "#/definitions/NatSpec" }
+    "userdoc": { "$ref": "#/definitions/NatSpec" },
+    "relativePath": {
+      "type": "string"
+    }
   },
   "required": [
     "abi"

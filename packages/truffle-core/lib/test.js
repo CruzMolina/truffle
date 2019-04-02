@@ -65,6 +65,8 @@ var Test = {
       return path.extname(file) === ".sol";
     });
 
+    //console.log("sol_tests", sol_tests)
+
     // Add Javascript tests because there's nothing we need to do with them.
     // Solidity tests will be handled later.
     js_tests.forEach(function(file) {
@@ -108,16 +110,40 @@ var Test = {
         dependency_paths = paths;
 
         testContracts = sol_tests.map(function(test_file_path) {
-          var built_name = "./" + path.basename(test_file_path);
-          return test_resolver.require(built_name);
+          // OG
+          //var built_name = "./" + path.basename(test_file_path);
+          //return test_resolver.require(built_name);
+          //
+          console.log("test_file_path:", test_file_path);
+          //console.log("config.contracts_directory", config.contracts_directory)
+          const testRelativePath = path.relative(
+            config.working_directory,
+            test_file_path
+          );
+          //console.log("test_file_path:", test_file_path)
+          //          console.log("config.contracts_dir", config.contracts_directory)
+          console.log("testRelativePath", testRelativePath);
+          //var built_name = testRelativePath.substring(3);
+          //          const example = testRelativePath.replace(/\.[^.$]+$/, '');
+          //          console.log("example", example)
+
+          //          var built_name = "./" + path.basename(testRelativePath);
+          return test_resolver.require(testRelativePath.replace(/[.].+/, "")); //built_name)//testRelativePath);
         });
 
+        //console.log("heyo!")
+
         runner = new TestRunner(config);
+        //console.log("hiiii")
+
+        //console.log("here those contracts bch", testContracts)
+        //console.log("here the dep paths", dependency_paths)
 
         return self.performInitialDeploy(config, test_resolver);
       })
       .then(function() {
         return self.defineSolidityTests(
+          //TODO
           mocha,
           testContracts,
           dependency_paths,
@@ -125,6 +151,7 @@ var Test = {
         );
       })
       .then(function() {
+        //console.log("about to setJSTests")
         return self.setJSTestGlobals(web3, accounts, test_resolver, runner);
       })
       .then(function() {
@@ -133,11 +160,16 @@ var Test = {
           throw reason;
         });
 
+        //console.log("about to mocha.run")
+
         mocha.run(function(failures) {
           config.logger.warn = warn;
 
+          //console.log("inside mocha.run")
+
           callback(failures);
         });
+        //console.log("after mocha.run")
       })
       .catch(callback);
   },
@@ -182,6 +214,7 @@ var Test = {
         }),
         function(err, updated) {
           if (err) return reject(err);
+          //console.log("updated:", updated)
 
           updated = updated || [];
 
@@ -192,7 +225,8 @@ var Test = {
               files: updated.concat(solidity_test_files),
               resolver: test_resolver,
               quiet: false,
-              quietWrite: true
+              quietWrite: true,
+              tests: true
             }),
             function(err, result) {
               if (err) return reject(err);
@@ -226,6 +260,8 @@ var Test = {
       contracts.forEach(function(contract) {
         SolidityTest.define(contract, dependency_paths, runner, mocha);
       });
+
+      //console.log("all solidity tests defined!")
 
       accept();
     });
@@ -261,6 +297,8 @@ var Test = {
         tests(accounts);
       };
 
+      //console.log("template declared")
+
       global.contract = function(name, tests) {
         Mocha.describe("Contract: " + name, function() {
           template.bind(this, tests)();
@@ -278,6 +316,8 @@ var Test = {
           template.bind(this, tests)();
         });
       };
+
+      //console.log("JS tests defined!")
 
       accept();
     });

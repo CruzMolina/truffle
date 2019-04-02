@@ -50,8 +50,12 @@ describe("artifactor + require", function() {
       }
     };
 
+    console.log("sourcePath:", sourcePath);
+
     // Compile first
     var result = await promisify(Compile)(sources, options);
+
+    console.log("result", result);
 
     // Clean up after solidity. Only remove solidity's listener,
     // which happens to be the first.
@@ -80,7 +84,8 @@ describe("artifactor + require", function() {
         abi: abi,
         binary: binary,
         address: "0xe6e1652a0397e078f434d6dda181b218cfd42e01",
-        network_id: network_id
+        network_id: network_id,
+        sourcePath: sourcePath
       })
       .then(function() {
         var json = requireNoCache(expected_filepath);
