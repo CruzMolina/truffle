@@ -32,7 +32,7 @@ const Migrate = {
       let migrations = files
         .filter(file => isNaN(parseInt(path.basename(file))) === false)
         .filter(
-          file => path.extname(file).match(options.allowed_extensions) != null
+          file => path.extname(file).match(options.allowed_extensions) !== null
         )
         .map(file => new Migration(file, Migrate.reporter, options));
 
@@ -70,8 +70,12 @@ const Migrate = {
     self.lastCompletedMigration(options, function(err, last_migration) {
       if (err) return callback(err);
 
-      // Don't rerun the last completed migration.
-      self.runFrom(last_migration + 1, options, callback);
+      if (last_migration === 0) {
+        self.runFrom(last_migration, options, callback);
+      } else {
+        // Don't rerun the last completed migration.
+        self.runFrom(last_migration + 1, options, callback);
+      }
     });
   },
 
@@ -81,7 +85,7 @@ const Migrate = {
     this.assemble(options, function(err, migrations) {
       if (err) return callback(err);
 
-      while (migrations.length > 0) {
+      while (migrations.length > 0 && number !== 0) {
         if (migrations[0].number >= number) break;
         migrations.shift();
       }
@@ -173,14 +177,32 @@ const Migrate = {
       return callback(null, 0);
     }
 
+    const checkMigrationsCode = (migrationsAddress, callback) => {
+      Migrations.web3.eth.getCode(migrationsAddress, callback);
+    };
+
+    /*checkMigrationsCode(Migrations.address, (err, code) => {
+      // console.log(code)
+      if (code === "0x") return callback(null, 0)
+    })*/
+
     Migrations.deployed()
       .then(function(migrations) {
         // Two possible Migrations.sol's (lintable/unlintable)
-        return migrations.last_completed_migration
-          ? migrations.last_completed_migration.call()
-          : migrations.lastCompletedMigration.call();
+        checkMigrationsCode(migrations.address, (err, code) => {
+          if (code === "0x") return callback(null, 0);
+          else {
+            return migrations.last_completed_migration
+              ? migrations.last_completed_migration.call()
+              : migrations.lastCompletedMigration.call();
+          }
+        });
+        // return migrations.last_completed_migration
+        //     ? migrations.last_completed_migration.call()
+        //: migrations.lastCompletedMigration.call();
       })
       .then(function(completed_migration) {
+        if (!completed_migration) return callback(null, 0);
         callback(null, parseInt(completed_migration));
       })
       .catch(callback);
@@ -199,7 +221,7 @@ const Migrate = {
       self.assemble(options, function(err, migrations) {
         if (err) return callback(err);
 
-        while (migrations.length > 0) {
+        while (migrations.length > 0 && number !== 0) {
           if (migrations[0].number >= number) break;
           migrations.shift();
         }
