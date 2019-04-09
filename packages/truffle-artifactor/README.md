@@ -5,7 +5,7 @@ This package saves contract artifacts into JSON files
 ```javascript
 const Artifactor = require("truffle-artifactor");
 const artifactor = new Artifactor(__dirname);
-artifactor.save({/*...*/}); // saves MyContract.json to a given destination
+artifactor.save({/*...*/}); // => a promise saving MyContract.json to a given destination
 ```
 
 👏
@@ -53,7 +53,7 @@ artifactor.save(contract_data);
 
 #### `artifactor.save(contract_data)`
 
-Save contract data as a `.json` file.
+Save contract data as a `.json` file. Returns a Promise.
 
 * `contract_data`: Object. Data that represents this contract:
 
@@ -70,7 +70,7 @@ Save contract data as a `.json` file.
 
 #### `artifactor.saveAll(contracts)`
 
-Save many contracts to the filesystem at once.
+Save many contracts to the filesystem at once. Returns a Promise.
 
 * `contracts`: Object. Keys are the contract names and the values are `contract_data` objects, as in the `save()` function above:
 
