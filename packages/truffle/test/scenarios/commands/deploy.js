@@ -4,16 +4,20 @@ const sandbox = require("../sandbox");
 const Server = require("../server");
 const path = require("path");
 
-describe("truffle deploy (alias for migrate)", () => {
+describe.only("truffle deploy (alias for migrate)", () => {
   let config, projectPath;
 
-  before("before all setup", async () => {
-    await Server.start();
+  before("before all setup", done => {
     projectPath = path.join(__dirname, "../../sources/migrations/init");
-    config = await sandbox.create(projectPath);
-    config.logger = { log: () => {} };
+    sandbox.create(projectPath).then(conf => {
+      config = conf;
+      config.network = "development";
+      config.logger = { log: () => {} };
+    });
+    Server.start(done);
   });
-  after(async () => await Server.stop());
+
+  after(done => Server.stop(done));
 
   describe("when run on the most basic truffle project", () => {
     it("doesn't throw", done => {
