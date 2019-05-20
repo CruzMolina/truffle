@@ -9,12 +9,14 @@ describe.only("truffle migrate", () => {
 
   before("before all setup", done => {
     projectPath = path.join(__dirname, "../../sources/migrations/init");
-    sandbox.create(projectPath).then(conf => {
-      config = conf;
-      config.network = "development";
-      config.logger = { log: () => {} };
-    });
-    Server.start(done);
+    sandbox
+      .create(projectPath)
+      .then(conf => {
+        config = conf;
+        config.network = "development";
+        config.logger = { log: () => {} };
+      })
+      .then(() => Server.start(done));
   });
 
   after(done => Server.stop(done));
