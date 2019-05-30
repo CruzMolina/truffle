@@ -3,6 +3,7 @@ const Web3Shim = require("truffle-interface-adapter").Web3Shim;
 const utils = require("../utils");
 const execute = require("../execute");
 const bootstrap = require("./bootstrap");
+const BlockchainUtils = require("truffle-blockchain-utils");
 
 module.exports = Contract => ({
   setProvider(provider) {
@@ -116,7 +117,69 @@ module.exports = Contract => ({
     return !!this.network.address;
   },
 
-  async detectNetwork() {
+  detectNetwork() {
+    return new Promise((accept, reject) => {
+      // Try to get the current blockLimit
+      this.web3.eth
+        .getBlock("latest")
+        .then(({ gasLimit }) => {
+          // Try to detect the network we have artifacts for.
+          if (this.network_id && this.networks[this.network_id] != null) {
+            // We have a network id and a configuration, let's go with it.
+            return accept({
+              id: this.network_id,
+              blockLimit: gasLimit
+            });
+          }
+          this.web3.eth.net
+            .getId()
+            .then(network_id => {
+              // If we found the network via a number, let's use that.
+              if (this.hasNetwork(network_id)) {
+                this.setNetwork(network_id);
+                return accept({
+                  id: this.network_id,
+                  blockLimit: gasLimit
+                });
+              }
+              // Otherwise, go through all the networks that are listed as
+              // blockchain uris and see if they match.
+              const uris = Object.keys(this._json.networks).filter(
+                network => network.indexOf("blockchain://") === 0
+              );
+              const matches = uris.map(uri =>
+                BlockchainUtils.matches.bind(
+                  BlockchainUtils,
+                  uri,
+                  this.web3.currentProvider
+                )
+              );
+              utils.parallel(matches, (err, results) => {
+                if (err) return reject(err);
+                for (let i = 0; i < results.length; i++) {
+                  if (results[i]) {
+                    this.setNetwork(uris[i]);
+                    return accept({
+                      id: this.network_id,
+                      blockLimit: gasLimit
+                    });
+                  }
+                }
+                // We found nothing. Set the network id to whatever the provider states.
+                this.setNetwork(network_id);
+                return accept({
+                  id: this.network_id,
+                  blockLimit: gasLimit
+                });
+              });
+            })
+            .catch(reject);
+        })
+        .catch(reject);
+    });
+  },
+
+  /*  async detectNetwork() {
     // if artifacts already have a network_id and network configuration synced,
     // use that network and use latest block gasLimit
     if (this.network_id && this.networks[this.network_id] != null) {
@@ -136,7 +199,7 @@ module.exports = Contract => ({
     } catch (error) {
       throw error;
     }
-  },
+  }, */
 
   setNetwork(network_id) {
     if (!network_id) return;
