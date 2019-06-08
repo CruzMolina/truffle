@@ -126,7 +126,7 @@ const compile = function(sources, options, callback) {
 
   supplier
     .load()
-    .then(solc => {
+    .then(([solc]) => {
       const result = solc.compile(JSON.stringify(solcStandardInput));
 
       const standardOutput = JSON.parse(result);
