@@ -4,12 +4,13 @@ language: node_js
 
 addons:
   apt:
-    packages: dpkg
+    packages:
+      - dpkg
+      - ethereum
   homebrew:
     packages: solidity
 
 before_install:
-  - sudo apt-get install -y dpkg
   - npm list -g lerna --depth=0 || npm install -g lerna
   - npm install -g yarn
 
