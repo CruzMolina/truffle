@@ -4,9 +4,9 @@ language: node_js
 
 addons:
   apt:
-    packages:
-      - dpkg
-      - ethereum
+    packages: dpkg
+    sources:
+      sourceline: `ppa:ethereum/ethereum`
 
 before_install:
   - npm list -g lerna --depth=0 || npm install -g lerna
@@ -28,7 +28,7 @@ matrix:
       env: COVERAGE=true
 
 install:
-  - yarn bootstrap
+  - travis_wait yarn bootstrap
   - truffle obtain --solc=0.5.8
 
 cache:
