@@ -2,9 +2,13 @@ dist: trusty
 sudo: required
 language: node_js
 
+addons:
+  apt:
+    packages: dpkg
+  homebrew:
+    packages: solidity
+
 before_install:
-  - sudo add-apt-repository --yes ppa:ethereum/ethereum
-  - sudo apt-get update
   - sudo apt-get install -y dpkg
   - npm list -g lerna --depth=0 || npm install -g lerna
   - npm install -g yarn
