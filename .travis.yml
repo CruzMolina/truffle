@@ -4,10 +4,9 @@ language: node_js
 
 addons:
   apt:
-    packages:
-      - dpkg
     sources:
       - sourceline: `deb http://ppa.launchpad.net/ethereum/ethereum/ubuntu trusty main`
+    packages: dpkg
 
 before_install:
   - npm list -g lerna --depth=0 || npm install -g lerna
