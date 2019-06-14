@@ -5,7 +5,7 @@ language: node_js
 addons:
   apt:
     sources:
-      - sourceline: `deb http://ppa.launchpad.net/ethereum/ethereum/ubuntu trusty main`
+      - sourceline: `ppa:ethereum/ethereum`
     packages: dpkg
 
 before_install:
