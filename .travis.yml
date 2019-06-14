@@ -5,7 +5,7 @@ language: node_js
 addons:
   apt:
     sources:
-      - sourceline: `ppa:ethereum/ethereum`
+      - sourceline: 'ppa:ethereum/ethereum'
     packages: dpkg
 
 before_install:
