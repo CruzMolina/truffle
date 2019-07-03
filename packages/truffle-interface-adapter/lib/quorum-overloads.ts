@@ -1,5 +1,7 @@
 import BN from "bn.js";
 import Web3 from "web3";
+import {AbiCoder as EthersAbi} from 'ethers/utils/abi-coder';
+import _ from "underscore";
 
 // The ts-ignores are ignoring the checks that are
 // saying that web3.eth.getBlock is a function and doesn't
@@ -90,4 +92,149 @@ export function getTransactionReceipt(web3: Web3) {
 
     return result;
   };
+};
+
+/*export function abiCoder(web3: Web3) {
+  const _oldAbiCoder = web3.eth.abi;
+
+  //web3.eth.abi.decodeParameters = AbiCoder.decodeParameters;
+
+  const ethersAbiCoder = new EthersAbi((type: any, value: any) => {
+    if (type.match(/^u?int/) && !_.isArray(value) && (!_.isObject(value) || value.constructor.name !== 'BN')) {
+        return value.toString();
+    }
+    return value;
+})
+
+// result method
+function Result() {
+}
+
+function mapTypes(types: Array<any>) {
+  const mappedTypes: Array<any> = [];
+    types.forEach(type => {
+        if (isSimplifiedStructFormat(type)) {
+            const structName = Object.keys(type)[0];
+            mappedTypes.push(
+                Object.assign(
+                    mapStructNameAndType(structName),
+                    {
+                        components: mapStructToCoderFormat(type[structName])
+                    }
+                )
+            );
+
+            return;
+        }
+
+        mappedTypes.push(type);
+    });
+
+    return mappedTypes;
+};
+
+function isSimplifiedStructFormat(type: any) {
+    return typeof type === 'object' && typeof type.components === 'undefined' && typeof type.name === 'undefined';
+};
+
+function mapStructNameAndType(structName: String) {
+    let type = 'tuple';
+
+    if (structName.includes('[]')) {
+        type = 'tuple[]';
+        structName = structName.slice(0, -2);
+    }
+
+    return {type, name: structName};
+};
+
+function mapStructToCoderFormat(struct: any) {
+  const components: Array<any> = [];
+    Object.keys(struct).forEach(key => {
+        if (typeof struct[key] === 'object') {
+            components.push(
+                Object.assign(
+                    mapStructNameAndType(key),
+                    {
+                        components: mapStructToCoderFormat(struct[key])
+                    }
+                )
+            );
+
+            return;
+        }
+
+        components.push({
+            name: key,
+            type: struct[key]
+        });
+    });
+
+    return components;
+};
+
+web3.eth.abi.decodeParameters = (outputs: Array<any>, bytes: String) => {
+  if (!bytes) bytes = "0".repeat(64)
+  const res = ethersAbiCoder.decode(mapTypes(outputs), `0x${bytes.replace(/0x/i, '')}`);
+    //@ts-ignore
+    const returnValue = new Result();
+    returnValue.__length__ = 0;
+
+    outputs.forEach((output: any, i: any) => {
+        let decodedValue = res[returnValue.__length__];
+        decodedValue = (decodedValue === '0x') ? null : decodedValue;
+
+        returnValue[i] = decodedValue;
+
+        if (_.isObject(output) && output.name) {
+            returnValue[output.name] = decodedValue;
+        }
+
+        returnValue.__length__++;
+    });
+
+    return returnValue;
+  };
+
+}*/
+
+export function decodeParameters(web3: Web3) {
+  const _oldDecodeParameters = web3.eth.abi.decodeParameters;
+  let AbiCoder = <any>web3.eth.abi;
+
+  const ethersAbiCoder = new EthersAbi((type, value) => {
+    if (type.match(/^u?int/) && !_.isArray(value) && (!_.isObject(value) || value.constructor.name !== 'BN')) {
+        return value.toString();
+    }
+    return value;
+});
+
+// result method
+function Result() {
+}
+
+  //web3.eth.abi.decodeParameters = AbiCoder.decodeParameters;
+  web3.eth.abi.decodeParameters = (outputs: Array<any>, bytes: String) => {
+  if (!bytes) bytes = "0".repeat(64)
+const res = ethersAbiCoder.decode(AbiCoder.mapTypes(outputs), `0x${bytes.replace(/0x/i, '')}`);
+    //@ts-ignore
+    const returnValue = new Result();
+    returnValue.__length__ = 0;
+
+    outputs.forEach((output, i) => {
+        let decodedValue = res[returnValue.__length__];
+        decodedValue = (decodedValue === '0x') ? null : decodedValue;
+
+        returnValue[i] = decodedValue;
+
+        if (_.isObject(output) && output.name) {
+            returnValue[output.name] = decodedValue;
+        }
+
+        returnValue.__length__++;
+    });
+
+    return returnValue;
+  };
+
 };

@@ -83,5 +83,7 @@ export class Web3Shim extends Web3 {
     quorumOverloads.getBlock(this);
     quorumOverloads.getTransaction(this);
     quorumOverloads.getTransactionReceipt(this);
+    //quorumOverloads.abiCoder(this);
+    quorumOverloads.decodeParameters(this);
   }
 }
