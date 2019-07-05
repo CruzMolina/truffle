@@ -1,8 +1,7 @@
 const OS = require("os");
-const semver = require("semver");
-
 const CompileError = require("./compileerror");
 const CompilerSupplier = require("./compilerSupplier");
+const semver = require("semver");
 
 async function run(rawSources, options) {
   if (Object.keys(rawSources).length === 0) {
@@ -35,7 +34,11 @@ async function run(rawSources, options) {
 
   // handle warnings as errors if options.strict
   // log if not options.quiet
-  const { warnings, errors } = detectErrors({ compilerOutput, options });
+  const { warnings, errors } = detectErrors({
+    compilerOutput,
+    options,
+    solcVersion
+  });
   if (warnings.length > 0 && !options.quiet) {
     options.logger.log(
       OS.EOL + "    > compilation warnings encountered:" + OS.EOL
@@ -68,6 +71,41 @@ async function run(rawSources, options) {
       version: solcVersion
     }
   };
+}
+
+function orderABI({ abi, contractName, ast }) {
+  // AST can have multiple contract definitions, make sure we have the
+  // one that matches our contract
+  const contractDefinition = ast.nodes.find(
+    ({ nodeType, name }) =>
+      nodeType === "ContractDefinition" && name === contractName
+  );
+
+  if (!contractDefinition || !contractDefinition.nodes) {
+    return abi;
+  }
+
+  // Find all function definitions
+  const orderedFunctionNames = contractDefinition.nodes
+    .filter(({ nodeType }) => nodeType === "FunctionDefinition")
+    .map(({ name: functionName }) => functionName);
+
+  // Put function names in a hash with their order, lowest first, for speed.
+  const functionIndexes = orderedFunctionNames
+    .map((functionName, index) => ({ [functionName]: index }))
+    .reduce((a, b) => Object.assign({}, a, b), {});
+
+  // Construct new ABI with functions at the end in source order
+  return [
+    ...abi.filter(({ name }) => functionIndexes[name] === undefined),
+
+    // followed by the functions in the source order
+    ...abi
+      .filter(({ name }) => functionIndexes[name] !== undefined)
+      .sort(
+        ({ name: a }, { name: b }) => functionIndexes[a] - functionIndexes[b]
+      )
+  ];
 }
 
 /**
@@ -137,7 +175,10 @@ function getPortableSourcePath(sourcePath) {
 }
 
 /**
- *
+ * @param sources - { [sourcePath]: contents }
+ * @param targets - sourcePath[]
+ * @param setings - subset of Solidity settings
+ * @return solc compiler input JSON
  */
 function prepareCompilerInput({ sources, targets, settings }) {
   return {
@@ -146,36 +187,45 @@ function prepareCompilerInput({ sources, targets, settings }) {
     settings: {
       evmVersion: settings.evmVersion,
       optimizer: settings.optimizer,
+
+      // Specify compilation targets. Each target uses defaultSelectors,
+      // defaulting to single target `*` if targets are unspecified
       outputSelection: prepareOutputSelection({ targets })
     }
   };
 }
 
+/**
+ * Convert sources into solc compiler input format
+ * @param sources - { [sourcePath]: string }
+ * @return { [sourcePath]: { content: string } }
+ */
 function prepareSources({ sources }) {
   return Object.entries(sources)
     .map(([sourcePath, content]) => ({ [sourcePath]: { content } }))
     .reduce((a, b) => Object.assign({}, a, b), {});
 }
 
-const defaultSelectors = {
-  "": ["legacyAST", "ast"],
-  "*": [
-    "abi",
-    "metadata",
-    "evm.bytecode.object",
-    "evm.bytecode.sourceMap",
-    "evm.deployedBytecode.object",
-    "evm.deployedBytecode.sourceMap",
-    "userdoc",
-    "devdoc"
-  ]
-};
-
 /**
- * If targets are specified, specify output selectors fo each individually.
+ * If targets are specified, specify output selectors for each individually.
  * Otherwise, just use "*" selector
+ * @param targets - sourcePath[] | undefined
  */
 function prepareOutputSelection({ targets = [] }) {
+  const defaultSelectors = {
+    "": ["legacyAST", "ast"],
+    "*": [
+      "abi",
+      "metadata",
+      "evm.bytecode.object",
+      "evm.bytecode.sourceMap",
+      "evm.deployedBytecode.object",
+      "evm.deployedBytecode.sourceMap",
+      "userdoc",
+      "devdoc"
+    ]
+  };
+
   if (!targets.length) {
     return {
       "*": defaultSelectors
@@ -211,7 +261,11 @@ async function invokeCompiler({ compilerInput, options }) {
  * Extract errors/warnings from compiler output based on strict mode setting
  * @return { errors: string, warnings: string }
  */
-function detectErrors({ compilerOutput: { errors: outputErrors }, options }) {
+function detectErrors({
+  compilerOutput: { errors: outputErrors },
+  options,
+  solcVersion
+}) {
   outputErrors = outputErrors || [];
   const rawErrors = options.strict
     ? outputErrors
@@ -230,7 +284,7 @@ function detectErrors({ compilerOutput: { errors: outputErrors }, options }) {
   if (errors.includes("requires different compiler version")) {
     const contractSolcVer = errors.match(/pragma solidity[^;]*/gm)[0];
     const configSolcVer =
-      options.compilers.solc.version || semver.valid(solc.version());
+      options.compilers.solc.version || semver.valid(solcVersion);
 
     errors = errors.concat(
       [
@@ -267,7 +321,7 @@ function processSources({ compilerOutput, originalSourcePaths }) {
 
 /**
  * Converts compiler-output contracts into truffle-compile's return format
- * Uses compiler contrarct output plus other information.
+ * Uses compiler contract output plus other information.
  */
 function processContracts({
   compilerOutput,
@@ -333,13 +387,13 @@ function processContracts({
           deployedSourceMap,
           ast,
           legacyAST,
-          bytecode: replaceAllLinkReferences({
-            bytecode,
-            linkReferences
+          bytecode: zeroLinkReferences({
+            bytes: bytecode,
+            linkReferences: formatLinkReferences(linkReferences)
           }),
-          deployedBytecode: replaceAllLinkReferences({
-            bytecode: deployedBytecode,
-            linkReferences: deployedLinkReferences
+          deployedBytecode: zeroLinkReferences({
+            bytes: deployedBytecode,
+            linkReferences: formatLinkReferences(deployedLinkReferences)
           }),
           compiler: {
             name: "solc",
@@ -350,77 +404,50 @@ function processContracts({
   );
 }
 
-function orderABI({ abi, contractName, ast }) {
-  // AST can have multiple contract definitions, make sure we have the
-  // one that matches our contract
-  const contractDefinition = ast.nodes.filter(
-    ({ nodeType, name }) =>
-      nodeType === "ContractDefinition" && name === contractName
-  )[0];
-
-  if (!contractDefinition || !contractDefinition.nodes) {
-    return abi;
-  }
-
-  // Find all function definitions
-  const orderedFunctionNames = contractDefinition.nodes
-    .filter(({ nodeType }) => nodeType === "FunctionDefinition")
-    .map(({ name: functionName }) => functionName);
-
-  // Put function names in a hash with their order, lowest first, for speed.
-  const functionIndexes = orderedFunctionNames
-    .map((functionName, index) => ({ [functionName]: index }))
-    .reduce((a, b) => Object.assign({}, a, b), {});
-
-  // Construct new ABI with functions at the end in source order
-  return [
-    ...abi.filter(({ name }) => functionIndexes[name] === undefined),
-
-    // followed by the functions in the source order
-    ...abi
-      .filter(({ name }) => functionIndexes[name] !== undefined)
-      .sort(
-        ({ name: a }, { name: b }) => functionIndexes[a] - functionIndexes[b]
-      )
-  ];
-}
-
-function replaceAllLinkReferences({ bytecode, linkReferences }) {
+function formatLinkReferences(linkReferences) {
   // convert to flat list
   const libraryLinkReferences = Object.values(linkReferences)
     .map(fileLinks =>
-      Object.entries(fileLinks).map(([libraryName, links]) => ({
-        libraryName,
+      Object.entries(fileLinks).map(([name, links]) => ({
+        name,
         links
       }))
     )
     .reduce((a, b) => [...a, ...b], []);
 
-  const unprefixed = libraryLinkReferences.reduce(
-    (bytecode, { libraryName, links }) =>
-      replaceLinkReferences(bytecode, links, libraryName),
-    bytecode
-  );
-
-  return `0x${unprefixed}`;
+  // convert to { offsets, length, name } format
+  return libraryLinkReferences.map(({ name, links }) => ({
+    offsets: links.map(({ start }) => start),
+    length: links[0].length, // HACK just assume they're going to be the same
+    name
+  }));
 }
 
-function replaceLinkReferences(bytecode, linkReferences, libraryName) {
-  var linkId = "__" + libraryName;
+// takes linkReferences in output format (not Solidity's format)
+function zeroLinkReferences({ bytes, linkReferences }) {
+  // inline link references - start by flattening the offsets
+  const flattenedLinkReferences = linkReferences
+    // map each link ref to array of link refs with only one offset
+    .map(({ offsets, length, name }) =>
+      offsets.map(offset => ({ offset, length, name }))
+    )
+    // flatten
+    .reduce((a, b) => [...a, ...b], []);
 
-  while (linkId.length < 40) {
-    linkId += "_";
-  }
+  // then overwite bytes with zeroes
+  bytes = flattenedLinkReferences.reduce((bytes, { offset, length }) => {
+    // length is a byte offset
+    const characterLength = length * 2;
+    const start = offset * 2;
 
-  linkReferences.forEach(function(ref) {
-    // ref.start is a byte offset. Convert it to character offset.
-    var start = ref.start * 2;
+    const zeroes = "0".repeat(characterLength);
 
-    bytecode =
-      bytecode.substring(0, start) + linkId + bytecode.substring(start + 40);
-  });
+    return `${bytes.substring(0, start)}${zeroes}${bytes.substring(
+      start + characterLength
+    )}`;
+  }, bytes);
 
-  return bytecode;
+  return { bytes, linkReferences };
 }
 
 module.exports = { run };

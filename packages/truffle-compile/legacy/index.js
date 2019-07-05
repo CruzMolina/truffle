@@ -1,12 +1,13 @@
-const debug = require("debug")("compile:legacy"); // eslint-disable-line no-unused-vars
 const path = require("path");
-const Profiler = require("./profiler");
-const CompilerSupplier = require("./compilerSupplier");
+const Profiler = require("../profiler");
+const CompilerSupplier = require("../compilerSupplier");
 const expect = require("truffle-expect");
 const findContracts = require("truffle-contract-sources");
 const Config = require("truffle-config");
-const { run } = require("./run");
-const normalize = require("./normalize");
+const debug = require("debug")("compile"); // eslint-disable-line no-unused-vars
+const { run } = require("../run");
+const { normalizeOptions } = require("./options");
+const { shimOutput } = require("./shims");
 
 // Most basic of the compile commands. Takes a hash of sources, where
 // the keys are file or module paths and the values are the bodies of
@@ -24,12 +25,11 @@ const compile = function(sources, options, callback) {
     options = {};
   }
 
-  // account for legacy settings
-  options = normalize.options(options);
+  options = normalizeOptions(options);
 
   run(sources, options)
-    .then(normalize.shim.output) // shim result
-    .then(([...result]) => callback(null, ...result))
+    .then(shimOutput)
+    .then(([...returnVals]) => callback(null, ...returnVals))
     .catch(callback);
 };
 
