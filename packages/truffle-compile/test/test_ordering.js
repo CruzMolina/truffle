@@ -1,10 +1,9 @@
 const debug = require("debug")("compile:test:test_ordering");
 var fs = require("fs");
 var path = require("path");
-var compile = require("../index");
+var Compile = require("../index");
 var CompilerSupplier = require("../compilerSupplier");
 var assert = require("assert");
-const { findOne } = require("./helpers");
 
 describe("Compile - solidity ^0.4.0", function() {
   this.timeout(5000); // solc
@@ -72,16 +71,18 @@ describe("Compile - solidity ^0.4.0", function() {
       assert.deepEqual(abi, alphabetic);
     });
 
-    it("orders the simple ABI", async function() {
+    it("orders the simple ABI", function(done) {
       var expectedOrder = ["theFirst", "second", "andThird"];
       var sources = {};
       sources["SimpleOrdered.sol"] = simpleOrderedSource;
 
-      const { contracts } = await compile(sources, compileOptions);
-
-      const SimpleOrdered = findOne("SimpleOrdered", contracts);
-      var abi = SimpleOrdered.abi.map(({ name }) => name);
-      assert.deepEqual(abi, expectedOrder);
+      Compile(sources, compileOptions, function(err, result) {
+        var abi = result["SimpleOrdered"].abi.map(function(item) {
+          return item.name;
+        });
+        assert.deepEqual(abi, expectedOrder);
+        done();
+      });
     });
 
     // Ordered.sol's methods are ordered semantically.
@@ -116,7 +117,7 @@ describe("Compile - solidity ^0.4.0", function() {
       assert.deepEqual(abi, alphabetic);
     });
 
-    it("orders the complex ABI", async function() {
+    it("orders the complex ABI", function(done) {
       var expectedOrder = [
         "LogB",
         "LogA",
@@ -130,22 +131,26 @@ describe("Compile - solidity ^0.4.0", function() {
       sources["ComplexOrdered.sol"] = complexOrderedSource;
       sources["InheritB.sol"] = inheritedSource;
 
-      const { contracts } = await compile(sources, compileOptions);
-      const ComplexOrdered = findOne("ComplexOrdered", contracts);
-      var abi = ComplexOrdered.abi.map(({ name }) => name);
-      assert.deepEqual(abi, expectedOrder);
+      Compile(sources, compileOptions, function(err, result) {
+        var abi = result["ComplexOrdered"].abi.map(function(item) {
+          return item.name;
+        });
+        assert.deepEqual(abi, expectedOrder);
+        done();
+      });
     });
 
     // Ported from `truffle-solidity-utils`
-    it("orders the ABI of a contract without functions", async function() {
+    it("orders the ABI of a contract without functions", function(done) {
       var sources = {};
       // ComplexOrdered.sol includes contract `Empty`
       sources["ComplexOrdered.sol"] = complexOrderedSource;
       sources["InheritB.sol"] = inheritedSource;
 
-      const { contracts } = await compile(sources, compileOptions);
-      const Empty = findOne("Empty", contracts);
-      assert.equal(Empty.abi.length, 0);
+      Compile(sources, compileOptions, function(err, result) {
+        assert.equal(result["Empty"].abi.length, 0);
+        done();
+      });
     });
   });
 });

@@ -1,4 +1,4 @@
-const compile = require("truffle-compile/legacy");
+const compile = require("truffle-compile");
 
 class DebugCompiler {
   constructor(config) {
