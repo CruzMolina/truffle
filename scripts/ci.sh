@@ -45,7 +45,7 @@ elif [ "$PACKAGES" = true ]; then
   docker pull ethereum/solc:0.4.22
   sudo add-apt-repository -y ppa:deadsnakes/ppa
   sudo apt-get update
-  sudo apt-get install -y python3.6 python3.6-dev python3-pip solc
+  sudo apt-get install -y python3.6 python3-pip solc
   sudo ln -s /usr/bin/python3.6 /usr/local/bin/python3
   sudo pip3 install vyper
   lerna run --scope truffle-* test --stream --concurrency=1
@@ -55,7 +55,7 @@ elif [ "$COVERAGE" = true ]; then
   docker pull ethereum/solc:0.4.22
   sudo add-apt-repository -y ppa:deadsnakes/ppa
   sudo apt-get update
-  sudo apt-get install -y jq python3.6 python3.6-dev python3-pip solc
+  sudo apt-get install -y jq python3.6 python3-pip solc
   sudo ln -s /usr/bin/python3.6 /usr/local/bin/python3
   sudo pip3 install vyper
   cd packages/truffle-debugger && yarn test:coverage && \
