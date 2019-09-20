@@ -21,7 +21,7 @@ const MigrationsMessages = require("./messages");
  *  + `this.migration`
  *  + `this.deployer`
  */
-class Reporter {
+class TezosReporter {
   constructor(describeJson) {
     this.migrator = null;
     this.deployer = null;
@@ -365,12 +365,10 @@ class Reporter {
   async postDeploy(data) {
     let message;
     if (data.deployed) {
-      const tx = await data.contract.web3.eth.getTransaction(
-        data.receipt.transactionHash
-      );
+      const tx = data.receipt.results[0];
 
       const block = await data.contract.web3.eth.getBlock(
-        data.receipt.blockNumber
+        data.receipt.includedInBlock
       );
 
       // if geth returns null, try again!
@@ -378,16 +376,22 @@ class Reporter {
 
       data.timestamp = block.timestamp;
 
-      const balance = await data.contract.web3.eth.getBalance(tx.from);
+      const balance = new web3Utils.BN(
+        await data.contract.web3.eth.getBalance(tx.source).toString()
+      );
+      console.log(balance.toString());
+      //      const gasPrice = new web3Utils.BN(tx.gasPrice);
+      const storagePrice = new web3Utils.BN(
+        tx.metadata.operation_result.paid_storage_size_diff
+      );
+      const gas = new web3Utils.BN(tx.metadata.operation_result.consumed_gas);
+      const fee = new web3Utils.BN(tx.fee);
+      const value = new web3Utils.BN(tx.balance);
+      const cost = fee.add(storagePrice).add(value);
 
-      const gasPrice = new web3Utils.BN(tx.gasPrice);
-      const gas = new web3Utils.BN(data.receipt.gasUsed);
-      const value = new web3Utils.BN(tx.value);
-      const cost = gasPrice.mul(gas).add(value);
-
-      data.gasPrice = web3Utils.fromWei(gasPrice, "gwei");
+      data.storagePrice = web3Utils.fromWei(storagePrice, "gwei");
       data.gas = gas.toString(10);
-      data.from = tx.from;
+      data.from = tx.source;
       data.value = web3Utils.fromWei(value, "ether");
       data.cost = web3Utils.fromWei(cost, "ether");
       data.balance = web3Utils.fromWei(balance, "ether");
@@ -506,4 +510,4 @@ class Reporter {
   }
 }
 
-module.exports = Reporter;
+module.exports = TezosReporter;

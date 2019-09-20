@@ -1,14 +1,15 @@
 import { Web3Shim, Web3ShimOptions } from "./web3-shim";
-// @ts-ignore
-import { eztz } from "eztz.js";
-import Sotez from "sotez";
+import { Tezos } from '@tezos-ts/tezos-ts';
 
 export const TezosDefinition = {
   async initNetworkType(web3: Web3Shim, options: Web3ShimOptions) {
-    // web3 expects getId to return a hexString convertible to a number
-    // for fabric-evm we ignore the hexToNumber output formatter
     overrides.getId(web3);
     overrides.getAccounts(web3, options);
+    overrides.getBlock(web3);
+    overrides.getBlockNumber(web3);
+    overrides.getBalance(web3);
+//    overrides.loadWallet(web3);
+//    overrides.sendTransaction(web3)
   }
 };
 
@@ -17,6 +18,8 @@ const overrides = {
   // saying that web3.eth.net.getId is a function and doesn't
   // have a `method` property, which it does
   getId: (web3: Web3Shim) => {
+    // @ts-ignore
+    web3.tez = Tezos;
     // @ts-ignore
     const _oldGetId = web3.eth.net.getId;
     // @ts-ignore
@@ -28,11 +31,10 @@ const overrides = {
       const currentHost = web3.currentProvider.host;
       const parsedHost = currentHost.match(/(^https?:\/\/)(.*?)\:\d.*/)[2];
       // @ts-ignore
-      await eztz.node.setProvider(parsedHost);
+      await web3.tez.setProvider({ rpc: parsedHost })
       // @ts-ignore
-      const { chain_id } = await eztz.rpc.getHead();
-      // @ts-ignore
-      return chain_id;
+      const { chainId } = await web3.tez.rpc.getBlockHeader();
+      return chainId;
     };
   },
 
@@ -41,6 +43,8 @@ const overrides = {
   // have a `method` property, which it does
   getAccounts: (web3: Web3Shim, { config } : Web3ShimOptions) => {
     // @ts-ignore
+    //web3.tez = Tezos;
+    // @ts-ignore
     const _oldGetAccounts = web3.eth.getAccounts;
     // @ts-ignore
     web3.eth.getAccounts = async () => {
@@ -48,19 +52,134 @@ const overrides = {
       // instead of a hex networkID. Instead of trying to decode the hexToNumber,
       // let's just accept `fabric-evm` as a valid networkID for now.
       // @ts-ignore
-      //      const currentHost = web3.currentProvider.host;
-      //const parsedHost = currentHost.match(/(^https?:\/\/)(.*?)\:\d.*/)[2];
+      await web3.tez.importKey(
+        // @ts-ignore
+        config.networks[config.network].email,
+        // @ts-ignore
+        config.networks[config.network].passphrase,
+        // @ts-ignore
+        config.networks[config.network].mnemonic,
+        // @ts-ignore
+        config.networks[config.network].secret
+      )
+
       // @ts-ignore
-      /*
-      const sotez = new Sotez(parsedHost)
-      const res = await sotez.importKey('off during october arrive sister emotion case library narrow width barrel pool final boy toast', 'z8wZCNn0cC', 'krtuxjvm.gtqdzgqj@tezos.example.org');
-      await console.log(await sotez.key.publicKeyHash())*/
+//      await web3.tez.setProvider({ rpc: config.networks[config.network].host }//, web3.tez.signer })
       // @ts-ignore
-      const sotez = new Sotez()
-      //@ts-ignore
-      await sotez.importKey(config.networks[config.network].mnemonic, config.networks[config.network].passphrase, config.networks[config.network].email)
-      const currentAccount = await sotez.key.publicKeyHash()
-      return currentAccount;
+      //await console.log(web3.tez);
+      // @ts-ignore
+      const currentAccount = await web3.tez.signer.publicKeyHash();
+      return [ currentAccount ];
     };
-  }
+  },
+
+  // The ts-ignores are ignoring the checks that are
+  // saying that web3.eth.getBlock is a function and doesn't
+  // have a `method` property, which it does
+  getBlock: (web3: Web3Shim) => {
+    // @ts-ignore
+    const _oldGetBlock = web3.eth.getBlock;
+
+    // @ts-ignore
+    web3.eth.getBlock = async (blockNumber = "head") => {
+      // @ts-ignore
+      //const currentHost = web3.currentProvider.host;
+     // const parsedHost = currentHost.match(/(^https?:\/\/)(.*?)\:\d.*/)[2];
+     // await Tezos.setProvider({ rpc: "https://rpcalpha.tzbeta.net" })
+      if (blockNumber === "latest") blockNumber = "head"
+      // @ts-ignore
+      const { hardGasLimitPerBlock } = await web3.tez.rpc.getConstants();
+      // @ts-ignore
+      const block = await web3.tez.rpc.getBlockHeader({ block: `${blockNumber}` })
+      block.gasLimit = hardGasLimitPerBlock
+      return block;
+    };
+  },
+
+  // The ts-ignores are ignoring the checks that are
+  // saying that web3.eth.net.getId is a function and doesn't
+  // have a `method` property, which it does
+  getBlockNumber: (web3: Web3Shim) => {
+    // @ts-ignore
+    const _oldGetBlockNumber = web3.eth.getBlockNumber;
+    // @ts-ignore
+    web3.eth.getBlockNumber = async () => {
+      // chaincode-fabric-evm currently returns a "fabric-evm" string
+      // instead of a hex networkID. Instead of trying to decode the hexToNumber,
+      // let's just accept `fabric-evm` as a valid networkID for now.
+      // @ts-ignore
+      //const currentHost = web3.currentProvider.host;
+      //const parsedHost = currentHost.match(/(^https?:\/\/)(.*?)\:\d.*/)[2];
+      //await Tezos.setProvider({ rpc: "https://rpcalpha.tzbeta.net" })
+      // @ts-ignore
+      const { level } = await web3.tez.rpc.getBlockHeader();
+      return level;
+    };
+  },
+
+  // The ts-ignores are ignoring the checks that are
+  // saying that web3.eth.net.getId is a function and doesn't
+  // have a `method` property, which it does
+  getBalance: (web3: Web3Shim) => {
+    // @ts-ignore
+    const _oldGetBlockNumber = web3.eth.getBalance;
+    // @ts-ignore
+    web3.eth.getBalance = async(address) => {
+      // chaincode-fabric-evm currently returns a "fabric-evm" string
+      // instead of a hex networkID. Instead of trying to decode the hexToNumber,
+      // let's just accept `fabric-evm` as a valid networkID for now.
+      // @ts-ignore
+      //const currentHost = web3.currentProvider.host;
+      //const parsedHost = currentHost.match(/(^https?:\/\/)(.*?)\:\d.*/)[2];
+      //await Tezos.setProvider({ rpc: "https://rpcalpha.tzbeta.net" })
+      // @ts-ignore
+      const balance = await web3.tez.tz.getBalance(address);
+      await console.log(balance, balance.toString())
+      // @ts-ignore
+      return await web3.tez.tz.getBalance(address);
+    };
+  },
+
+  /*sendTransaction: (web3: Web3Shim) => {
+    // @ts-ignore
+    const _oldsendTransaction = web3.eth.sendTransaction;;
+    // @ts-ignore
+    web3.eth.sendTransaction = async (params) => {
+      // chaincode-fabric-evm currently returns a "fabric-evm" string
+      // instead of a hex networkID. Instead of trying to decode the hexToNumber,
+      // let's just accept `fabric-evm` as a valid networkID for now.
+      // @ts-ignore
+      const receipt = await web3.tez.contract.originate(params);
+      // @ts-ignore
+      return receipt;
+    };
+  }*/
+
+
+  /*,
+
+  loadWallet: (web3: Web3Shim, { config } : Web3ShimOptions) => {
+    // @ts-ignore
+    web3.tez = Tezos
+    // @ts-ignore
+    web3.tez.loadWallet = async () => {
+      // @ts-ignore
+      const currentHost = web3.currentProvider.host;
+
+      // @ts-ignore
+      const signer = await web3.tez.importKey(
+        // @ts-ignore
+        config.networks[config.network].email,
+        // @ts-ignore
+        config.networks[config.network].passphrase,
+        // @ts-ignore
+        config.networks[config.network].mnemonic,
+        // @ts-ignore
+        config.networks[config.network].secret
+      )
+
+      //@ts-ignore
+      await web3.tez.setProvider({ rpc: "https://rpcalpha.tzbeta.net", signer })
+    };
+  }*/
 };

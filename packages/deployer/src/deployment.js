@@ -288,7 +288,9 @@ class Deployment {
       };
 
       const isDeployed = contract.isDeployed();
+      await console.log("isDeployed", isDeployed);
       const newArgs = await Promise.all(args);
+      await console.log("newArgs", newArgs);
       const currentBlock = await contract.web3.eth.getBlock("latest");
 
       // Last arg can be an object that tells us not to overwrite.
@@ -351,6 +353,7 @@ class Deployment {
           self._stopBlockPolling();
           eventArgs.error = err.error || err;
           let message = await self.emitter.emit("deployFailed", eventArgs);
+          console.error(err);
 
           // Reporter might not be enabled (via Migrate.launchReporter) so
           // message is a (potentially empty) array of results from the emitter

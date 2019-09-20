@@ -9,6 +9,7 @@ run_geth() {
     -d \
     -p 8545:8545 \
     -p 8546:8546 \
+    -p 8547:8547 \
     -p 30303:30303 \
     ethereum/client-go:latest \
     --rpc \
@@ -34,7 +35,7 @@ if [ "$INTEGRATION" = true ]; then
 
 elif [ "$GETH" = true ]; then
 
-  sudo apt install -y jq
+  #sudo apt install -y jq
   docker pull ethereum/client-go:latest
   run_geth
   sleep 30
