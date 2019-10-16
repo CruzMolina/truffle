@@ -1,8 +1,11 @@
-import { Web3Shim, Web3ShimOptions } from "./web3-shim";
+import { InterfaceAdapter, InterfaceAdapterOptions } from "./interface-adapter";
 import { Tezos } from "@taquito/taquito";
 
 export const TezosDefinition = {
-  async initNetworkType(web3: Web3Shim, options: Web3ShimOptions) {
+  async initNetworkType(
+    web3: InterfaceAdapter,
+    options: InterfaceAdapterOptions
+  ) {
     overrides.getId(web3);
     overrides.getAccounts(web3, options);
     overrides.getBlock(web3);
@@ -12,9 +15,9 @@ export const TezosDefinition = {
 };
 
 const overrides = {
-  getId: (web3: Web3Shim) => {
+  getId: (web3: InterfaceAdapter) => {
     // here we define a tez namespace &
-    // attach our Tezos provider to the Web3Shim
+    // attach our Tezos provider to the InterfaceAdapter
     web3.tez = Tezos;
     const _oldGetId = web3.eth.net.getId;
 
@@ -32,7 +35,10 @@ const overrides = {
     };
   },
 
-  getAccounts: (web3: Web3Shim, { config }: Web3ShimOptions) => {
+  getAccounts: (
+    web3: InterfaceAdapter,
+    { config }: InterfaceAdapterOptions
+  ) => {
     const _oldGetAccounts = web3.eth.getAccounts;
 
     web3.eth.getAccounts = async () => {
@@ -54,7 +60,7 @@ const overrides = {
     };
   },
 
-  getBlock: (web3: Web3Shim) => {
+  getBlock: (web3: InterfaceAdapter) => {
     const _oldGetBlock = web3.eth.getBlock;
 
     // @ts-ignore
@@ -72,7 +78,7 @@ const overrides = {
     };
   },
 
-  getBlockNumber: (web3: Web3Shim) => {
+  getBlockNumber: (web3: InterfaceAdapter) => {
     const _oldGetBlockNumber = web3.eth.getBlockNumber;
 
     web3.eth.getBlockNumber = async () => {
@@ -81,7 +87,7 @@ const overrides = {
     };
   },
 
-  getBalance: (web3: Web3Shim) => {
+  getBalance: (web3: InterfaceAdapter) => {
     // since this is used in the tez reporter,
     // decided to namespace a specific tez getBalance method
     // @ts-ignore
