@@ -8,7 +8,10 @@ import { EthereumDefinition } from "./ethereum-overloads";
 import { QuorumDefinition } from "./quorum-overloads";
 import { FabricEvmDefinition } from "./fabric-evm-overloads";
 
-const initInterface = async (web3Shim: Web3Shim, options?: Web3ShimOptions) => {
+const initInterface = async (
+  interfaceAdapter: InterfaceAdapter,
+  options?: InterfaceAdapterOptions
+) => {
   const networkTypes: NetworkTypesConfig = new Map(
     Object.entries({
       tezos: TezosDefinition,
@@ -18,7 +21,9 @@ const initInterface = async (web3Shim: Web3Shim, options?: Web3ShimOptions) => {
     })
   );
 
-  networkTypes.get(web3Shim.networkType).initNetworkType(web3Shim, options);
+  networkTypes
+    .get(interfaceAdapter.networkType)
+    .initNetworkType(interfaceAdapter, options);
 };
 
 // March 13, 2019 - Mike Seese:
@@ -29,15 +34,15 @@ const initInterface = async (web3Shim: Web3Shim, options?: Web3ShimOptions) => {
 
 export type NetworkType = string;
 
-export interface Web3ShimOptions {
+export interface InterfaceAdapterOptions {
   config?: Config;
   provider?: Provider;
   networkType?: NetworkType;
 }
 
 export type InitNetworkType = (
-  web3Shim: Web3Shim,
-  options?: Web3ShimOptions
+  interfaceAdapter: InterfaceAdapter,
+  options?: InterfaceAdapterOptions
 ) => Promise<void>;
 
 export interface NetworkTypeDefinition {
@@ -61,10 +66,10 @@ export type NetworkTypesConfig = Map<NetworkType, NetworkTypeDefinition>;
 // should drive the development of the correct architecture of
 // `@truffle/interface-adapter`that should use this work in a more
 // sane and organized manner.
-export class Web3Shim extends Web3 {
+export class InterfaceAdapter extends Web3 {
   public networkType: NetworkType;
 
-  constructor(options?: Web3ShimOptions) {
+  constructor(options?: InterfaceAdapterOptions) {
     super();
 
     if (options) {
@@ -80,7 +85,7 @@ export class Web3Shim extends Web3 {
     initInterface(this, options);
   }
 
-  setNetworkType(networkType: NetworkType, options?: Web3ShimOptions) {
+  setNetworkType(networkType: NetworkType, options?: InterfaceAdapterOptions) {
     this.networkType = networkType;
     initInterface(this, options);
   }
