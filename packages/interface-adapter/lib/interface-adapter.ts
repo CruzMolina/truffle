@@ -1,5 +1,5 @@
 import Web3 from "web3";
-import { Provider } from "web3/providers";
+import { Callback, Provider } from "web3/providers";
 import Config from "@truffle/config";
 import { TezosToolkit } from "@taquito/taquito";
 
@@ -32,7 +32,7 @@ const initInterface = async (
 // will undergo better architecture before TruffleCon to support
 // other non-Ethereum-based ledgers.
 
-export type NetworkType = string;
+export type NetworkType = String;
 
 export interface InterfaceAdapterOptions {
   config?: Config;
@@ -89,6 +89,10 @@ export class InterfaceAdapter extends Web3 {
     this.networkType = networkType;
     initInterface(this, options);
   }
+
+  public getNetworkId: (
+    cb?: Callback<Number | String>
+  ) => Promise<Number | String>;
 
   public tez: TezosToolkit;
 }
