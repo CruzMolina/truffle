@@ -33,6 +33,8 @@ const overrides = {
       const { chainId } = await web3.tez.rpc.getBlockHeader();
       return chainId;
     };
+
+    web3.getNetworkId = web3.eth.net.getId;
   },
 
   getAccounts: (
