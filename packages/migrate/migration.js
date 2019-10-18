@@ -32,8 +32,8 @@ class Migration {
     // TODO temp stopgap!
     let accounts;
     if (options.networks[options.network].type === "tezos")
-      accounts = await context.web3.eth.getAccounts(options);
-    else accounts = await context.web3.eth.getAccounts();
+      accounts = await context.adapter.eth.getAccounts(options);
+    else accounts = await context.adapter.eth.getAccounts();
     const requireOptions = {
       file: this.file,
       context: context,
