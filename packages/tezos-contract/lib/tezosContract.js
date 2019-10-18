@@ -182,7 +182,7 @@ if (typeof Web3 === "object" && Object.keys(Web3).length === 0) {
           txParams
         );
         // NOTE: this will only work if the contract parameter is type Unit!!!
-        const op = await instance.constructor.web3.tez.contract.transfer(
+        const op = await instance.constructor.adapter.tez.contract.transfer(
           packet
         );
         await op.confirmation();
