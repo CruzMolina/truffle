@@ -16,14 +16,14 @@ var execute = {
    */
   getGasEstimate: function(params, blockLimit) {
     var constructor = this;
-    var web3 = this.web3;
+    var adapter = this.adapter;
 
     return new Promise(function(accept) {
       // Always prefer specified gas - this includes gas set by class_defaults
       if (params.gasLimit) return accept(params.gasLimit);
       if (!constructor.autoGas) return accept();
 
-      web3.eth
+      adapter.eth
         .estimateGas(params)
         .then(gas => {
           const bestEstimate = utils.multiplyBigNumberByDecimal(
@@ -215,7 +215,7 @@ var execute = {
    */
   deploy: function() {
     var constructor = this;
-    var web3 = this.web3;
+    var adapter = this.adapter;
 
     return function() {
       var deferred;
@@ -258,13 +258,13 @@ var execute = {
             gasLimit: params.gasLimit || params.gas
           };
 
-          deferred = web3.tez.contract.originate(originateParams);
+          deferred = adapter.tez.contract.originate(originateParams);
 
           try {
             const receipt = await deferred;
             context.promiEvent.eventEmitter.emit("receipt", receipt);
             if (!receipt.hash) {
-              var reason = await Reason.get(params, web3);
+              var reason = await Reason.get(params, adapter);
 
               var error = new StatusError(params, context, receipt, reason);
 
@@ -459,7 +459,7 @@ var execute = {
 
         delete res.params["data"]; // Is this necessary?
 
-        var instance = new constructor.web3.eth.Contract(
+        var instance = new constructor.adapter.eth.Contract(
           constructor.abi,
           res.params
         );
