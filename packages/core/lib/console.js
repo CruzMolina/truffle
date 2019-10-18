@@ -66,8 +66,8 @@ class Console extends EventEmitter {
       let accounts;
       // TODO temp stopgap!
       if (config.networks[config.network].type === "tezos")
-        accounts = await this.web3.eth.getAccounts(config);
-      else accounts = await this.web3.eth.getAccounts();
+        accounts = await this.adapter.eth.getAccounts(config);
+      else accounts = await this.adapter.eth.getAccounts();
 
       const abstractions = this.provision();
 
