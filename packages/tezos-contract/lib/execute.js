@@ -286,9 +286,9 @@ var execute = {
             }
 
             context.promiEvent.resolve(new constructor(contractInstance));
-          } catch (web3Error) {
-            context.promiEvent.eventEmitter.emit("error", web3Error);
-            throw Error(`Error: \n${JSON.stringify(web3Error, null, " ")}`);
+          } catch (error) {
+            context.promiEvent.eventEmitter.emit("error", error);
+            throw Error(`Error: \n${JSON.stringify(error, null, " ")}`);
           }
         })
         .catch(promiEvent.reject);
