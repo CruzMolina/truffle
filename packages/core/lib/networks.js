@@ -4,7 +4,7 @@ var OS = require("os");
 var BlockchainUtils = require("@truffle/blockchain-utils");
 var Provider = require("@truffle/provider");
 var async = require("async");
-var { Web3Shim } = require("@truffle/interface-adapter");
+var { InterfaceAdapter } = require("@truffle/interface-adapter");
 
 var Networks = {
   deployed: function(options, callback) {
@@ -300,12 +300,12 @@ var Networks = {
       return callback(null, false);
     }
 
-    var web3 = new Web3Shim({
+    var adapter = new InterfaceAdapter({
       provider,
       networkType: network_options.type
     });
-    web3.eth.net
-      .getId(current_network_id => {
+    adapter
+      .getNetworkId(current_network_id => {
         if (first === current_network_id) {
           return callback(null, true);
         }

@@ -2,7 +2,7 @@ const Mocha = require("mocha");
 const colors = require("colors");
 const chai = require("chai");
 const path = require("path");
-const { Web3Shim } = require("@truffle/interface-adapter");
+const { InterfaceAdapter } = require("@truffle/interface-adapter");
 const Config = require("@truffle/config");
 const Contracts = require("@truffle/workflow-compile/new");
 const Resolver = require("@truffle/resolver");
@@ -37,7 +37,7 @@ const Test = {
 
     // `accounts` will be populated before each contract() invocation
     // and passed to it so tests don't have to call it themselves.
-    const web3 = new Web3Shim({
+    const adapter = new InterfaceAdapter({
       config,
       provider: config.provider,
       networkType: config.networks[config.network].type
@@ -76,7 +76,7 @@ const Test = {
       mocha.addFile(file);
     });
 
-    const accounts = await this.getAccounts(web3);
+    const accounts = await this.getAccounts(adapter);
 
     if (!config.resolver) config.resolver = new Resolver(config);
 
@@ -111,7 +111,7 @@ const Test = {
 
     await this.setJSTestGlobals({
       config,
-      web3,
+      adapter,
       accounts,
       testResolver,
       runner,
@@ -151,8 +151,8 @@ const Test = {
     return mocha;
   },
 
-  getAccounts: function(web3) {
-    return web3.eth.getAccounts();
+  getAccounts: function(adapter) {
+    return adapter.eth.getAccounts();
   },
 
   compileContractsWithTestFilesIfNeeded: async function(
@@ -203,14 +203,15 @@ const Test = {
 
   setJSTestGlobals: function({
     config,
-    web3,
+    adapter,
     accounts,
     testResolver,
     runner,
     compilation
   }) {
     return new Promise(accept => {
-      global.web3 = web3;
+      global.web3 = adapter;
+      global.adapter = adapter;
       global.assert = chai.assert;
       global.expect = chai.expect;
       global.artifacts = {
