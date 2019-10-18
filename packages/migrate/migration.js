@@ -2,7 +2,7 @@ const path = require("path");
 const Deployer = require("@truffle/deployer");
 const Require = require("@truffle/require");
 const Emittery = require("emittery");
-const { Web3Shim } = require("@truffle/interface-adapter");
+const { InterfaceAdapter } = require("@truffle/interface-adapter");
 
 const ResolverIntercept = require("./resolverintercept");
 
@@ -23,7 +23,7 @@ class Migration {
   /**
    * Loads & validates migration, then runs it.
    * @param  {Object}   options  config and command-line
-   * @param  {Object}   context  web3
+   * @param  {Object}   context  adapter
    * @param  {Object}   deployer truffle module
    * @param  {Object}   resolver truffle module
    */
@@ -136,7 +136,7 @@ class Migration {
    * @param  {Object}   options  config and command-line
    */
   async run(options) {
-    const { web3, resolver, context, deployer } = this.prepareForMigrations(
+    const { adapter, resolver, context, deployer } = this.prepareForMigrations(
       options
     );
 
@@ -150,7 +150,7 @@ class Migration {
 
     // Get file path and emit pre-migration event
     const file = path.relative(options.migrations_directory, this.file);
-    const { gasLimit } = await web3.eth.getBlock("latest");
+    const { gasLimit } = await adapter.eth.getBlock("latest");
 
     const preMigrationsData = {
       file: file,
@@ -167,7 +167,7 @@ class Migration {
 
   prepareForMigrations(options) {
     const logger = options.logger;
-    const web3 = new Web3Shim({
+    const adapter = new InterfaceAdapter({
       config: options,
       provider: options.provider,
       networkType: options.networks[options.network].type
@@ -176,7 +176,7 @@ class Migration {
     const resolver = new ResolverIntercept(options.resolver);
 
     // Initial context.
-    const context = { web3 };
+    const context = { adapter, web3: adapter };
 
     const deployer = new Deployer({
       logger,
@@ -189,7 +189,7 @@ class Migration {
       basePath: path.dirname(this.file)
     });
 
-    return { logger, web3, resolver, context, deployer };
+    return { logger, adapter, resolver, context, deployer };
   }
 
   /**
